@@ -18,10 +18,16 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
   };
 
   return (
-    <div ref={ref} className="p-8 bg-white text-black font-sans w-full" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto' }}>
+    <div ref={ref} className="p-6 bg-white text-black font-sans w-full mx-auto" style={{ width: '210mm', minHeight: '295mm' }}>
+      <style>{`
+        @media print {
+          @page { margin: 0; size: A4; }
+          body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
       
       {/* Outer Border */}
-      <div className="border-2 border-slate-800 h-full flex flex-col">
+      <div className="border-2 border-slate-800 h-[280mm] flex flex-col">
         
         {/* HEADER SECTION */}
         <div className="text-center pb-2 border-b-2 border-slate-800 relative">
@@ -62,7 +68,7 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
 
           {/* Bill Info (Right) */}
           <div className="w-2/5 flex flex-col text-sm font-bold">
-            <div className="flex border-b border-slate-800">
+            <div className="flex border-b border-slate-800 flex-1">
               <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">
                 <span className="w-16">Bill No :</span>
                 <span className="text-blue-800 text-base">{billInfo?.billNo || "8199"}</span>
@@ -73,13 +79,13 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
             </div>
             
             <div className="flex border-b border-slate-800 flex-1">
-              <div className="w-1/3 p-1 border-r border-slate-800 flex items-center">TRANSPORT</div>
-              <div className="w-2/3 p-1 flex items-center font-normal uppercase">{billInfo?.transport || "DIRECT SALES"}</div>
+              <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">TRANSPORT</div>
+              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.transport || "DIRECT SALES"}</div>
             </div>
             
             <div className="flex border-b border-slate-800 flex-1">
-              <div className="w-1/3 p-1 border-r border-slate-800 flex items-center">DESTINATION</div>
-              <div className="w-2/3 p-1 flex items-center font-normal uppercase">{billInfo?.destination || ""}</div>
+              <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">DESTINATION</div>
+              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.destination || ""}</div>
             </div>
 
             <div className="flex border-b border-slate-800 flex-1">
@@ -92,13 +98,13 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
             </div>
 
             <div className="flex border-b border-slate-800 flex-1">
-              <div className="w-1/3 p-1 border-r border-slate-800 flex items-center">LR NO</div>
-              <div className="w-2/3 p-1 flex items-center font-normal uppercase">{billInfo?.lrNo || ""}</div>
+              <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">LR NO</div>
+              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.lrNo || ""}</div>
             </div>
 
             <div className="flex flex-1">
-              <div className="w-1/3 p-1 border-r border-slate-800 flex items-center">E WAY BILL NO</div>
-              <div className="w-2/3 p-1 flex items-center font-normal uppercase">{billInfo?.eWayBillNo || ""}</div>
+              <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">E WAY BILL NO</div>
+              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.eWayBillNo || ""}</div>
             </div>
           </div>
 

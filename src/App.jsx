@@ -8,6 +8,8 @@ import AddClient from './pages/Clients/AddClient';
 import ClientsDetails from './pages/Clients/ClientsDetails';
 import CreateBill from './pages/Bill/CreateBill';
 
+import Guidance from './pages/Guidance/Guidance';
+
 function App() {
   return (
     <BrowserRouter>
@@ -39,7 +41,7 @@ function App() {
           <Route path="settings/business" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Business Settings</div>} />
           <Route path="settings/invoice" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Invoice Settings</div>} />
           <Route path="settings/tax" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Tax Settings</div>} />
-          <Route path="guidance/guide" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">User Guide</div>} />
+          <Route path="guidance/guide" element={<Guidance />} />
         </Route>
       </Routes>
     </BrowserRouter>
