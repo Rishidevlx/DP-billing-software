@@ -4,6 +4,7 @@ const PrintLedger = forwardRef(({ data, filters }, ref) => {
   if (!data) return null;
 
   const totalPurchases = data.reduce((sum, c) => sum + c.totalPurchases, 0);
+  const totalReturns = data.reduce((sum, c) => sum + c.totalReturns, 0);
   const totalPaid = data.reduce((sum, c) => sum + c.totalPaid, 0);
   const totalBalance = data.reduce((sum, c) => sum + c.balanceDue, 0);
 
@@ -51,6 +52,7 @@ const PrintLedger = forwardRef(({ data, filters }, ref) => {
             <th className="border-r border-black p-2 font-bold w-24">City</th>
             <th className="border-r border-black p-2 font-bold w-20 text-center">Party Type</th>
             <th className="border-r border-black p-2 font-bold w-24 text-right">Total Purchases</th>
+            <th className="border-r border-black p-2 font-bold w-24 text-right">Total Returns</th>
             <th className="border-r border-black p-2 font-bold w-24 text-right">Total Paid</th>
             <th className="p-2 font-bold w-24 text-right">Balance Due</th>
           </tr>
@@ -63,13 +65,14 @@ const PrintLedger = forwardRef(({ data, filters }, ref) => {
               <td className="border-r border-black p-2 uppercase">{c.city || '-'}</td>
               <td className="border-r border-black p-2 text-center">{c.partyType || '-'}</td>
               <td className="border-r border-black p-2 text-right">₹{c.totalPurchases.toFixed(2)}</td>
+              <td className="border-r border-black p-2 text-right">₹{c.totalReturns.toFixed(2)}</td>
               <td className="border-r border-black p-2 text-right">₹{c.totalPaid.toFixed(2)}</td>
               <td className="p-2 text-right font-bold">₹{c.balanceDue.toFixed(2)}</td>
             </tr>
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan="7" className="p-4 text-center italic">No data available for selected filters.</td>
+              <td colSpan="8" className="p-4 text-center italic">No data available for selected filters.</td>
             </tr>
           )}
         </tbody>
@@ -78,6 +81,7 @@ const PrintLedger = forwardRef(({ data, filters }, ref) => {
             <tr className="bg-[#d9d9d9]/50 border-t-2 border-black font-bold">
               <td colSpan="4" className="border-r border-black p-2 text-right">GRAND TOTAL:</td>
               <td className="border-r border-black p-2 text-right">₹{totalPurchases.toFixed(2)}</td>
+              <td className="border-r border-black p-2 text-right">₹{totalReturns.toFixed(2)}</td>
               <td className="border-r border-black p-2 text-right">₹{totalPaid.toFixed(2)}</td>
               <td className="p-2 text-right">₹{totalBalance.toFixed(2)}</td>
             </tr>

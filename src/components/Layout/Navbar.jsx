@@ -34,6 +34,8 @@ export default function Navbar({ toggleSidebar }) {
     { title: 'All Bills', path: '/bill/all' },
     { title: 'Create Bill', path: '/bill/create' },
     { title: 'LR Details', path: '/bill/lr' },
+    { title: 'Create Return', path: '/returns/create' },
+    { title: 'All Returns', path: '/returns/all' },
     { title: 'Add Books', path: '/books/add' },
     { title: 'Books Details', path: '/books/details' },
     { title: 'Add Clients', path: '/clients/add' },

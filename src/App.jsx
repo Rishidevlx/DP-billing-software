@@ -9,6 +9,8 @@ import ClientsDetails from './pages/Clients/ClientsDetails';
 import CreateBill from './pages/Bill/CreateBill';
 import AllBills from './pages/Bill/AllBills';
 import LRDetails from './pages/Bill/LRDetails';
+import CreateReturn from './pages/Returns/CreateReturn';
+import AllReturns from './pages/Returns/AllReturns';
 import Inventory from './pages/Inventory/Inventory';
 import ReceiptPage from './pages/Reports/ReceiptPage';
 import LedgerReport from './pages/Reports/LedgerReport';
@@ -32,6 +34,11 @@ function App() {
           <Route path="bill/create" element={<CreateBill />} />
           <Route path="bill/edit/:id" element={<CreateBill />} />
           <Route path="bill/lr" element={<LRDetails />} />
+          
+          {/* Returns Routes */}
+          <Route path="returns/all" element={<AllReturns />} />
+          <Route path="returns/create" element={<CreateReturn />} />
+          <Route path="returns/edit/:id" element={<CreateReturn />} />
           
           {/* Books Routes */}
           <Route path="books/add" element={<AddBook />} />

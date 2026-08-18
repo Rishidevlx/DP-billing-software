@@ -7,6 +7,7 @@ export default function LedgerReport() {
   const [clients, setClients] = useState([]);
   const [bills, setBills] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [returns, setReturns] = useState([]);
 
   const [cities, setCities] = useState([]);
   const [partyTypes, setPartyTypes] = useState([]);
@@ -30,10 +31,12 @@ export default function LedgerReport() {
     const loadedClients = JSON.parse(localStorage.getItem('clients') || '[]');
     const loadedBills = JSON.parse(localStorage.getItem('bills') || '[]');
     const loadedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
+    const loadedReturns = JSON.parse(localStorage.getItem('returns') || '[]');
 
     setClients(loadedClients);
     setBills(loadedBills);
     setReceipts(loadedReceipts);
+    setReturns(loadedReturns);
 
     // Extract unique cities, party types, and groups
     const uniqueCities = [...new Set(loadedClients.map(c => c.city).filter(Boolean))];
@@ -60,6 +63,7 @@ export default function LedgerReport() {
   const clientsWithStats = clients.map(client => {
     let clientBills = bills.filter(b => b.customer?.name === client.ledgerName);
     let clientReceipts = receipts.filter(r => r.customerName === client.ledgerName);
+    let clientReturns = returns.filter(rt => rt.customer?.name === client.ledgerName);
 
     if (filters.fromDate) {
       const fromDateObj = new Date(filters.fromDate);
@@ -70,6 +74,10 @@ export default function LedgerReport() {
       });
       clientReceipts = clientReceipts.filter(r => {
         const d = parseDateString(r.date);
+        return d ? d >= fromDateObj : true;
+      });
+      clientReturns = clientReturns.filter(rt => {
+        const d = parseDateString(rt.returnInfo?.date);
         return d ? d >= fromDateObj : true;
       });
     }
@@ -85,16 +93,24 @@ export default function LedgerReport() {
         const d = parseDateString(r.date);
         return d ? d <= toDateObj : true;
       });
+      clientReturns = clientReturns.filter(rt => {
+        const d = parseDateString(rt.returnInfo?.date);
+        return d ? d <= toDateObj : true;
+      });
     }
 
     const totalPurchases = clientBills.reduce((sum, b) => sum + (parseFloat(b.totals?.amount) || 0), 0);
     const totalPaid = clientReceipts.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+    const totalReturns = clientReturns.reduce((sum, rt) => sum + (parseFloat(rt.totals?.amount) || 0), 0);
+    
+    // balanceDue = totalPurchases - totalPaid because totalPurchases is already net of returns (original bill is modified)
     const balanceDue = totalPurchases - totalPaid;
 
     return {
       ...client,
       totalPurchases,
       totalPaid,
+      totalReturns,
       balanceDue
     };
   });
@@ -292,6 +308,7 @@ export default function LedgerReport() {
                 <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Party Type</th>
                 <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Mobile No</th>
                 <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Total Purchases</th>
+                <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Total Returns</th>
                 <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Total Paid</th>
                 <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Balance Due</th>
               </tr>
@@ -306,6 +323,7 @@ export default function LedgerReport() {
                     <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{client.partyType || '-'}</td>
                     <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{client.mobileNo || '-'}</td>
                     <td className="p-3 text-sm text-right font-medium text-blue-600 dark:text-blue-400">₹{client.totalPurchases.toFixed(2)}</td>
+                    <td className="p-3 text-sm text-right font-medium text-orange-500 dark:text-orange-400">₹{client.totalReturns.toFixed(2)}</td>
                     <td className="p-3 text-sm text-right font-medium text-green-600 dark:text-green-400">₹{client.totalPaid.toFixed(2)}</td>
                     <td className="p-3 text-sm text-right font-bold text-red-600 dark:text-red-400">₹{client.balanceDue.toFixed(2)}</td>
                   </tr>
@@ -324,6 +342,9 @@ export default function LedgerReport() {
                   <td colSpan="5" className="p-3 text-right font-bold text-slate-700 dark:text-slate-300">TOTAL:</td>
                   <td className="p-3 text-right font-bold text-blue-600 dark:text-blue-400 text-base">
                     ₹{filteredData.reduce((sum, c) => sum + c.totalPurchases, 0).toFixed(2)}
+                  </td>
+                  <td className="p-3 text-right font-bold text-orange-500 dark:text-orange-400 text-base">
+                    ₹{filteredData.reduce((sum, c) => sum + c.totalReturns, 0).toFixed(2)}
                   </td>
                   <td className="p-3 text-right font-bold text-green-600 dark:text-green-400 text-base">
                     ₹{filteredData.reduce((sum, c) => sum + c.totalPaid, 0).toFixed(2)}

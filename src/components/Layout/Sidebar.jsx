@@ -30,6 +30,8 @@ const menuItems = [
       { title: 'All Bills', path: '/bill/all', icon: <FileText size={16} /> },
       { title: 'Create Bill', path: '/bill/create', icon: <FilePlus size={16} /> },
       { title: 'LR Details', path: '/bill/lr', icon: <Receipt size={16} /> },
+      { title: 'Create Return', path: '/returns/create', icon: <FilePlus size={16} /> },
+      { title: 'All Returns', path: '/returns/all', icon: <FileText size={16} /> },
     ]
   },
   {
