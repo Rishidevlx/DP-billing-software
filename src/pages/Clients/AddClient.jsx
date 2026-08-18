@@ -59,11 +59,9 @@ export default function AddClient() {
   const initialData = {
     ledgerName: '',
     printName: '',
-    group: 'Sundry Debtors',
-    partyType: 'Customer',
-    billByBill: 'No',
-    creditDays: '',
-    crLimit: '',
+    group: 'Customer',
+    partyType: 'School',
+    billByBill: 'Yes',
     splPriceGroup: '',
     
     address: '',
@@ -73,18 +71,10 @@ export default function AddClient() {
     mobileNo: '',
     emailId: '',
     pinCode: '',
-    state: '',
     phoneNo: '',
-    dlNo: '',
-    
-    bankName: '',
-    branch: '',
-    accountNo: '',
     
     gstNo: '',
-    panNo: '',
-    aadharNo: '',
-    regnType: 'Regular',
+    regnType: 'Unregistered',
     badDebtor: false
   };
 
@@ -92,57 +82,80 @@ export default function AddClient() {
 
   useEffect(() => {
     if (isEditMode) {
-      setFormData({
-        ledgerName: `Siva Bookstore ${id}`,
-        printName: 'Siva Bookstore',
-        group: 'Sundry Debtors',
-        partyType: 'Customer',
-        billByBill: 'Yes',
-        creditDays: '30',
-        crLimit: '50000',
-        splPriceGroup: 'Wholesale',
-        
-        address: 'No 45, Gandhi Road',
-        city: 'Chennai',
-        district: 'Chennai',
-        contactPerson: 'Siva',
-        mobileNo: '9876543210',
-        emailId: 'contact@sivabooks.com',
-        pinCode: '600001',
-        state: 'Tamil Nadu',
-        phoneNo: '044-2345678',
-        dlNo: 'DLTN123456',
-        
-        bankName: 'HDFC Bank',
-        branch: 'Anna Nagar',
-        accountNo: '50100123456789',
-        
-        gstNo: '33AAAAA0000A1Z5',
-        panNo: 'AAAAA0000A',
-        aadharNo: '123456789012',
-        regnType: 'Regular',
-        badDebtor: false
-      });
+      const saved = localStorage.getItem('clients');
+      if (saved) {
+        const clients = JSON.parse(saved);
+        const client = clients.find(c => c.id === parseInt(id));
+        if (client) {
+          setFormData(client);
+        }
+      }
     }
   }, [id, isEditMode]);
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        document.getElementById('clientSubmitBtn')?.click();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
+    setFormData(prev => {
+      const newData = { 
+        ...prev, 
+        [name]: type === 'checkbox' ? checked : value 
+      };
+      
+      if (name === 'partyType') {
+        if (value === 'School') {
+          newData.billByBill = 'Yes';
+        } else if (value === 'Shop' || value === 'Agent') {
+          newData.billByBill = 'No';
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const handleClear = () => {
     setFormData(initialData);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+      const form = e.target.form;
+      if (form) {
+        const elements = Array.from(form.elements).filter(el => !el.disabled && el.tabIndex !== -1 && el.type !== 'hidden');
+        const index = elements.indexOf(e.target);
+        if (index > -1 && index < elements.length - 1) {
+          elements[index + 1].focus();
+        }
+      }
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Client Data Submitted:", formData);
     
+    const saved = localStorage.getItem('clients');
+    const clients = saved ? JSON.parse(saved) : [];
+    
     if (isEditMode) {
+      const index = clients.findIndex(c => c.id === parseInt(id));
+      if (index !== -1) {
+        clients[index] = { ...formData, id: parseInt(id) };
+      }
+      localStorage.setItem('clients', JSON.stringify(clients));
+
       Swal.fire({
         title: 'Updated!',
         text: 'Client/customer details have been successfully updated.',
@@ -152,6 +165,10 @@ export default function AddClient() {
         navigate('/clients/details');
       });
     } else {
+      const newClient = { ...formData, id: Date.now() };
+      clients.push(newClient);
+      localStorage.setItem('clients', JSON.stringify(clients));
+
       Swal.fire({
         title: 'Created!',
         text: 'New client/customer has been successfully added.',
@@ -174,16 +191,16 @@ export default function AddClient() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
         
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#1a1a2e] rounded-t-lg">
           <h2 className="text-base font-semibold text-primary-dark dark:text-slate-200 uppercase tracking-wide">LEDGER MASTER</h2>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* LEFT COLUMN: Basic & Mailing Details */}
-          <div className="lg:col-span-8 flex flex-col gap-8">
+          {/* LEFT COLUMN: Basic & Tax Details */}
+          <div className="flex flex-col gap-8">
             
             {/* Basic / Customer Details */}
             <div>
@@ -191,47 +208,10 @@ export default function AddClient() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Ledger Name" name="ledgerName" formData={formData} onChange={handleChange} required />
                 <InputField label="Print Name" name="printName" formData={formData} onChange={handleChange} />
-                <SelectField label="Group" name="group" options={['Sundry Debtors', 'Sundry Creditors', 'Bank Accounts']} formData={formData} onChange={handleChange} />
-                <SelectField label="Party Type" name="partyType" options={['Customer', 'Supplier', 'Dealer']} formData={formData} onChange={handleChange} />
+                <SelectField label="Group" name="group" options={['Customer']} formData={formData} onChange={handleChange} />
+                <SelectField label="Party Type" name="partyType" options={['School', 'Shop', 'Agent']} formData={formData} onChange={handleChange} />
                 <SelectField label="Bill by Bill" name="billByBill" options={['Yes', 'No']} formData={formData} onChange={handleChange} />
-                <InputField label="Credit Days" name="creditDays" type="number" formData={formData} onChange={handleChange} />
-                <InputField label="Cr. Limit" name="crLimit" type="number" formData={formData} onChange={handleChange} />
                 <InputField label="Spl. Price / Disc Group" name="splPriceGroup" formData={formData} onChange={handleChange} />
-              </div>
-            </div>
-
-            {/* Mailing Details */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Mailing Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Address" name="address" type="textarea" className="md:col-span-2" formData={formData} onChange={handleChange} />
-                
-                <InputField label="City" name="city" formData={formData} onChange={handleChange} />
-                <InputField label="District" name="district" formData={formData} onChange={handleChange} />
-                <InputField label="State" name="state" formData={formData} onChange={handleChange} />
-                <InputField label="Pin Code" name="pinCode" formData={formData} onChange={handleChange} />
-                
-                <InputField label="Contact Person" name="contactPerson" formData={formData} onChange={handleChange} />
-                <InputField label="Mobile No" name="mobileNo" type="tel" formData={formData} onChange={handleChange} required />
-                <InputField label="Phone No" name="phoneNo" type="tel" formData={formData} onChange={handleChange} />
-                <InputField label="E-Mail ID" name="emailId" type="email" formData={formData} onChange={handleChange} />
-                <InputField label="D.L. No" name="dlNo" formData={formData} onChange={handleChange} />
-              </div>
-            </div>
-
-          </div>
-
-
-          {/* RIGHT COLUMN: Bank & Tax Details */}
-          <div className="lg:col-span-4 flex flex-col gap-8">
-            
-            {/* Bank Details */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Bank Details</h3>
-              <div className="flex flex-col gap-4">
-                <InputField label="Bank Name" name="bankName" formData={formData} onChange={handleChange} />
-                <InputField label="Branch" name="branch" formData={formData} onChange={handleChange} />
-                <InputField label="Account No" name="accountNo" formData={formData} onChange={handleChange} />
               </div>
             </div>
 
@@ -241,8 +221,6 @@ export default function AddClient() {
               <div className="flex flex-col gap-4">
                 <SelectField label="Regn. Type" name="regnType" options={['Regular', 'Composition', 'Unregistered']} formData={formData} onChange={handleChange} />
                 <InputField label="GST No" name="gstNo" formData={formData} onChange={handleChange} />
-                <InputField label="PAN No" name="panNo" formData={formData} onChange={handleChange} />
-                <InputField label="Aadhar No" name="aadharNo" formData={formData} onChange={handleChange} />
                 
                 {/* Bad Debtor Checkbox */}
                 <div className="mt-2 flex items-center gap-2">
@@ -252,12 +230,34 @@ export default function AddClient() {
                     name="badDebtor" 
                     checked={formData.badDebtor}
                     onChange={handleChange}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                   <label htmlFor="badDebtor" className="text-sm font-medium text-red-600 dark:text-red-400 cursor-pointer">
                     Mark as Bad Debtor
                   </label>
                 </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* RIGHT COLUMN: Mailing Details */}
+          <div className="flex flex-col gap-8">
+            
+            {/* Mailing Details */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Mailing Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField label="Address" name="address" type="textarea" className="md:col-span-2" formData={formData} onChange={handleChange} />
+                
+                <InputField label="City" name="city" formData={formData} onChange={handleChange} />
+                <InputField label="District" name="district" formData={formData} onChange={handleChange} />
+                <InputField label="Pin Code" name="pinCode" formData={formData} onChange={handleChange} />
+                
+                <InputField label="Contact Person" name="contactPerson" formData={formData} onChange={handleChange} />
+                <InputField label="Mobile No" name="mobileNo" type="tel" formData={formData} onChange={handleChange} required />
+                <InputField label="Phone No" name="phoneNo" type="tel" formData={formData} onChange={handleChange} />
+                <InputField label="E-Mail ID" name="emailId" type="email" formData={formData} onChange={handleChange} />
               </div>
             </div>
 
@@ -278,10 +278,11 @@ export default function AddClient() {
           
           <button 
             type="submit" 
+            id="clientSubmitBtn"
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-10 py-3 rounded-none font-medium transition-colors cursor-pointer border-none"
           >
             <Save size={18} />
-            {isEditMode ? 'Update' : 'Create'}
+            {isEditMode ? 'Update (Ctrl+S)' : 'Create (Ctrl+S)'}
           </button>
         </div>
       </form>

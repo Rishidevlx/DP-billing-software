@@ -137,7 +137,7 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
               {items?.map((item, idx) => (
                 <tr key={idx}>
                   <td className="border-r-2 border-slate-800 text-center py-1">{idx + 1}</td>
-                  <td className="border-r-2 border-slate-800 px-2 py-1 font-medium">{item.particulars}</td>
+                  <td className="border-r-2 border-slate-800 px-2 py-1 font-medium">{item.itemName}</td>
                   <td className="border-r-2 border-slate-800 text-right px-2 py-1 font-medium">{Number(item.rate).toFixed(2)}</td>
                   <td className="border-r-2 border-slate-800 text-center py-1 font-medium">{item.qty}</td>
                   <td className="border-r-2 border-slate-800 text-center py-1 font-medium">{item.teachersCopy}</td>

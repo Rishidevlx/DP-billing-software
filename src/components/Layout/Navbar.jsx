@@ -22,7 +22,33 @@ export default function Navbar({ toggleSidebar }) {
   
   const profileRef = useRef(null);
   const notifRef = useRef(null);
+  const searchRef = useRef(null);
   const navigate = useNavigate();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [activeSearchIndex, setActiveSearchIndex] = useState(0);
+
+  const searchablePages = [
+    { title: 'Dashboard', path: '/dashboard' },
+    { title: 'All Bills', path: '/bill/all' },
+    { title: 'Create Bill', path: '/bill/create' },
+    { title: 'LR Details', path: '/bill/lr' },
+    { title: 'Add Books', path: '/books/add' },
+    { title: 'Books Details', path: '/books/details' },
+    { title: 'Add Clients', path: '/clients/add' },
+    { title: 'Clients Details', path: '/clients/details' },
+    { title: 'Inventory', path: '/inventory' },
+    { title: 'Transport', path: '/transport' },
+    { title: 'Customer Receipt', path: '/reports/receipt' },
+    { title: 'Ledger Report', path: '/reports/ledger' },
+    { title: 'Business Settings', path: '/settings/business' },
+    { title: 'Invoice Settings', path: '/settings/invoice' },
+    { title: 'Tax Settings', path: '/settings/tax' },
+    { title: 'User Guide', path: '/guidance/guide' }
+  ];
+
+  const filteredPages = searchablePages.filter(page => page.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   // Initialize dark mode from localStorage or OS preference
   useEffect(() => {
@@ -46,6 +72,9 @@ export default function Navbar({ toggleSidebar }) {
       }
       if (notifRef.current && !notifRef.current.contains(event.target)) {
         setShowNotifications(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -93,6 +122,35 @@ export default function Navbar({ toggleSidebar }) {
     navigate('/login');
   };
 
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (e.target.value) {
+      setShowSearchDropdown(true);
+      setActiveSearchIndex(0);
+    } else {
+      setShowSearchDropdown(false);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSearchIndex(prev => (prev < filteredPages.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSearchIndex(prev => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredPages.length > 0) {
+        navigate(filteredPages[activeSearchIndex].path);
+        setShowSearchDropdown(false);
+        setSearchQuery('');
+      }
+    } else if (e.key === 'Escape') {
+      setShowSearchDropdown(false);
+    }
+  };
+
   return (
     <div className="h-16 bg-white dark:bg-[#1E1E2D] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sticky top-0 z-10 shadow-sm transition-colors duration-300">
       {/* Left side */}
@@ -105,13 +163,36 @@ export default function Navbar({ toggleSidebar }) {
         </button>
         
         {/* Search */}
-        <div className="hidden md:flex items-center bg-slate-100 dark:bg-[#151521] rounded-md px-3 py-1.5 w-64 transition-all focus-within:ring-2 focus-within:ring-[#0E0D3A]/20 dark:focus-within:ring-slate-700 focus-within:bg-white dark:focus-within:bg-[#1E1E2D] border border-transparent focus-within:border-[#0E0D3A]/30 dark:focus-within:border-slate-600">
+        <div className="hidden md:flex relative items-center bg-slate-100 dark:bg-[#151521] rounded-md px-3 py-1.5 w-64 transition-all focus-within:ring-2 focus-within:ring-[#0E0D3A]/20 dark:focus-within:ring-slate-700 focus-within:bg-white dark:focus-within:bg-[#1E1E2D] border border-transparent focus-within:border-[#0E0D3A]/30 dark:focus-within:border-slate-600" ref={searchRef}>
           <Search size={16} className="text-slate-400 dark:text-slate-500" />
           <input 
             type="text" 
-            placeholder="Search..." 
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => { if(searchQuery) setShowSearchDropdown(true); }}
+            placeholder="Search pages... (Enter to go)" 
             className="bg-transparent border-none outline-none ml-2 text-sm w-full text-slate-600 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500"
           />
+          {showSearchDropdown && searchQuery && filteredPages.length > 0 && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-[#1E1E2D] rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+              <ul className="py-1">
+                {filteredPages.map((page, i) => (
+                  <li 
+                    key={i}
+                    onClick={() => {
+                      navigate(page.path);
+                      setShowSearchDropdown(false);
+                      setSearchQuery('');
+                    }}
+                    className={`px-3 py-2 cursor-pointer text-sm transition-colors ${activeSearchIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'}`}
+                  >
+                    {page.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

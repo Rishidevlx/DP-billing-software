@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import GlobalClientModal from '../Modal/GlobalClientModal';
 
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Check for Ctrl + N
+      if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault(); // Prevent default browser behavior (like opening a new window)
+        setIsClientModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -24,6 +38,12 @@ export default function Layout() {
           <Outlet />
         </div>
       </div>
+      
+      {/* Global Modals */}
+      <GlobalClientModal 
+        isOpen={isClientModalOpen} 
+        onClose={() => setIsClientModalOpen(false)} 
+      />
     </div>
   );
 }

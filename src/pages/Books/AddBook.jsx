@@ -47,15 +47,13 @@ export default function AddBook() {
   const [formData, setFormData] = useState({
     itemCode: '',
     itemName: '',
-    printName: '',
     alias: '',
-    group: '',
-    brand: '',
-    category: '',
+    group: 'BOOK',
     rateMethod: 'Qty',
     hsnCode: '',
-    tax: '',
-    taxSlab: '',
+    tax: 'Exempt',
+    customTax: '',
+    taxSlab: 'Zero',
     unit: 'NOS',
     convQty: '',
     packingQty: '',
@@ -63,45 +61,36 @@ export default function AddBook() {
     maxLevel: '',
     reorderLevel: '',
     rackNo: '',
-    purchaseRate: '',
     sellingPriceOn: 'Main Unit',
     sellingPrice: '',
     splPrice1: '',
     splPrice2: '',
-    mrp: ''
+    splPrice3: '',
+    mrp: '',
+    currentStock: '',
+    minStockAlert: ''
   });
 
   useEffect(() => {
     if (isEditMode) {
-      // Simulate fetching data for edit mode
-      setFormData({
-        itemCode: `BK00${id}`,
-        itemName: 'HARRY POTTER PART 1',
-        printName: 'HARRY POTTER',
-        alias: 'HP1',
-        group: 'BOOK',
-        brand: 'BLOOMSBURY',
-        category: 'FICTION',
-        rateMethod: 'Qty',
-        hsnCode: '4901',
-        tax: 'GST 5%',
-        taxSlab: 'Standard',
-        unit: 'NOS',
-        convQty: '1',
-        packingQty: '1',
-        minLevel: '5',
-        maxLevel: '100',
-        reorderLevel: '10',
-        rackNo: 'R-A1',
-        purchaseRate: '350.00',
-        sellingPriceOn: 'Main Unit',
-        sellingPrice: '450.00',
-        splPrice1: '420.00',
-        splPrice2: '400.00',
-        mrp: '500.00'
-      });
+      const existingBooks = JSON.parse(localStorage.getItem('books') || '[]');
+      const bookToEdit = existingBooks.find(b => b.id === parseInt(id));
+      if (bookToEdit) {
+        setFormData(bookToEdit);
+      }
     }
   }, [id, isEditMode]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        document.getElementById('bookSubmitBtn')?.click();
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -112,15 +101,13 @@ export default function AddBook() {
     setFormData({
       itemCode: '',
       itemName: '',
-      printName: '',
       alias: '',
-      group: '',
-      brand: '',
-      category: '',
+      group: 'BOOK',
       rateMethod: 'Qty',
       hsnCode: '',
-      tax: '',
-      taxSlab: '',
+      tax: 'Exempt',
+      customTax: '',
+      taxSlab: 'Zero',
       unit: 'NOS',
       convQty: '',
       packingQty: '',
@@ -128,21 +115,40 @@ export default function AddBook() {
       maxLevel: '',
       reorderLevel: '',
       rackNo: '',
-      purchaseRate: '',
       sellingPriceOn: 'Main Unit',
       sellingPrice: '',
       splPrice1: '',
       splPrice2: '',
-      mrp: ''
+      splPrice3: '',
+      mrp: '',
+      currentStock: '',
+      minStockAlert: ''
     });
   };
 
   const navigate = useNavigate();
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+      const form = e.target.form;
+      if (form) {
+        const elements = Array.from(form.elements).filter(el => !el.disabled && el.tabIndex !== -1 && el.type !== 'hidden');
+        const index = elements.indexOf(e.target);
+        if (index > -1 && index < elements.length - 1) {
+          elements[index + 1].focus();
+        }
+      }
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Form Data Submitted:", formData);
+    const existingBooks = JSON.parse(localStorage.getItem('books') || '[]');
+    
     if (isEditMode) {
+      const updatedBooks = existingBooks.map(b => b.id === parseInt(id) ? { ...formData, id: parseInt(id) } : b);
+      localStorage.setItem('books', JSON.stringify(updatedBooks));
       Swal.fire({
         title: 'Updated!',
         text: 'Book details have been successfully updated.',
@@ -152,11 +158,15 @@ export default function AddBook() {
         navigate('/books/details');
       });
     } else {
+      const newBook = { ...formData, id: Date.now() };
+      localStorage.setItem('books', JSON.stringify([...existingBooks, newBook]));
       Swal.fire({
         title: 'Created!',
         text: 'New book has been successfully created.',
         icon: 'success',
         confirmButtonColor: '#16a34a',
+      }).then(() => {
+        navigate('/books/details');
       });
     }
   };
@@ -172,7 +182,7 @@ export default function AddBook() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#1a1a2e] rounded-t-lg">
           <h2 className="text-base font-semibold text-primary-dark dark:text-slate-200 uppercase tracking-wide">ITEM MASTER</h2>
         </div>
@@ -188,11 +198,8 @@ export default function AddBook() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Item Code" name="itemCode" formData={formData} onChange={handleChange} required />
                 <InputField label="Item Name" name="itemName" formData={formData} onChange={handleChange} required />
-                <InputField label="Print Name" name="printName" formData={formData} onChange={handleChange} />
                 <InputField label="Alias / Part No" name="alias" formData={formData} onChange={handleChange} />
-                <SelectField label="Group" name="group" options={['BOOK', 'NOTEBOOK', 'STATIONERY']} formData={formData} onChange={handleChange} />
-                <InputField label="Brand" name="brand" formData={formData} onChange={handleChange} />
-                <SelectField label="Category" name="category" options={['FICTION', 'ACADEMIC', 'GUIDE']} formData={formData} onChange={handleChange} />
+                <SelectField label="Group" name="group" options={['BOOK']} formData={formData} onChange={handleChange} />
                 <SelectField label="Rate Method" name="rateMethod" options={['Qty', 'Weight', 'Length']} formData={formData} onChange={handleChange} />
               </div>
             </div>
@@ -203,15 +210,18 @@ export default function AddBook() {
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Tax Details</h3>
                 <div className="flex flex-col gap-4">
                   <InputField label="HSN Code" name="hsnCode" formData={formData} onChange={handleChange} />
-                  <SelectField label="Tax" name="tax" options={['GST 5%', 'GST 12%', 'GST 18%', 'Exempt']} formData={formData} onChange={handleChange} />
-                  <SelectField label="Tax Slab" name="taxSlab" options={['Standard', 'Reduced', 'Zero']} formData={formData} onChange={handleChange} />
+                  <SelectField label="Tax" name="tax" options={['Exempt', 'Other']} formData={formData} onChange={handleChange} />
+                  {formData.tax === 'Other' && (
+                    <InputField label="Custom Tax" name="customTax" formData={formData} onChange={handleChange} />
+                  )}
+                  <SelectField label="Tax Slab" name="taxSlab" options={['Zero']} formData={formData} onChange={handleChange} />
                 </div>
               </div>
 
               <div>
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Unit</h3>
                 <div className="flex flex-col gap-4">
-                  <SelectField label="Unit" name="unit" options={['NOS', 'BOX', 'KG', 'SET']} formData={formData} onChange={handleChange} />
+                  <SelectField label="Unit" name="unit" options={['NOS']} formData={formData} onChange={handleChange} />
                   <InputField label="Conv. Qty" name="convQty" formData={formData} onChange={handleChange} />
                   <InputField label="Packing Qty" name="packingQty" formData={formData} onChange={handleChange} />
                 </div>
@@ -228,8 +238,6 @@ export default function AddBook() {
             <div>
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Price Details</h3>
               <div className="flex flex-col gap-4">
-                <InputField label="Purchase Rate" name="purchaseRate" formData={formData} onChange={handleChange} required />
-                
                 <div className="flex items-center gap-6 py-2">
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Selling Price On:</span>
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-slate-400">
@@ -242,29 +250,15 @@ export default function AddBook() {
                   </label>
                 </div>
 
-                <InputField label="Selling Price" name="sellingPrice" formData={formData} onChange={handleChange} required />
+                <InputField label="Selling Price" name="sellingPrice" formData={formData} onChange={handleChange} />
                 <InputField label="Spl. Price 1" name="splPrice1" formData={formData} onChange={handleChange} />
                 <InputField label="Spl. Price 2" name="splPrice2" formData={formData} onChange={handleChange} />
+                <InputField label="Spl. Price 3" name="splPrice3" formData={formData} onChange={handleChange} />
                 <InputField label="MRP" name="mrp" formData={formData} onChange={handleChange} />
-                
-                <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-2">* Purchase Rate on Main Unit</p>
               </div>
             </div>
 
-            {/* Stock Level */}
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Stock Level</h3>
-              <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Minimum Level" name="minLevel" formData={formData} onChange={handleChange} />
-                  <InputField label="Max. Level" name="maxLevel" formData={formData} onChange={handleChange} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Reorder Level" name="reorderLevel" formData={formData} onChange={handleChange} />
-                  <InputField label="Rack No" name="rackNo" formData={formData} onChange={handleChange} />
-                </div>
-              </div>
-            </div>
+            {/* Stock Level Removed */}
 
           </div>
 
@@ -283,10 +277,11 @@ export default function AddBook() {
           
           <button 
             type="submit" 
+            id="bookSubmitBtn"
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-10 py-3 rounded-none font-medium transition-colors cursor-pointer border-none"
           >
             <Save size={18} />
-            {isEditMode ? 'Update' : 'Create'}
+            {isEditMode ? 'Update (Ctrl+S)' : 'Create (Ctrl+S)'}
           </button>
         </div>
       </form>

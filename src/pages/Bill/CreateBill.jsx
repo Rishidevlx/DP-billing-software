@@ -1,30 +1,86 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Save, Printer, Trash2 } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import PrintInvoice from './PrintInvoice';
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js';
 
-// Dummy Books for suggestions
-const dummyBooks = [
-  { id: 1, code: 'BK001', hsn: '49011010', name: "10 அமுதாசுரபி தமிழ்", rate: 120.00 },
-  { id: 2, code: 'BK002', hsn: '49011010', name: "8 சமூக அறிவியல்", rate: 110.00 },
-  { id: 3, code: 'BK003', hsn: '49011010', name: "8 ச மூ வரைபட பயிற்சி", rate: 20.00 },
-  { id: 4, code: 'BK004', hsn: '49011010', name: "8 MAP DRAWING ENGLISH", rate: 20.00 },
-  { id: 5, code: 'BK005', hsn: '49011010', name: "9 ச மூ வரைபட பயிற்சி", rate: 25.00 },
-];
 
-const dummyClients = [
-  { name: 'Siva Bookstore', mobile: '9876543210', school: 'THIYAGARAJA HR SEC SCHOOL', address1: 'N.G.G. O. COLONY', address2: 'Srivilliputtur Taluk - 626125', district: 'Virudhunagar District', phone: '9585549567' },
-  { name: 'National Publishers', mobile: '8877665544', school: 'NATIONAL PUBLIC SCHOOL', address1: 'Main Road', address2: 'Delhi - 110001', district: 'New Delhi', phone: '011-2345678' },
-  { name: 'Kumar Stationery', mobile: '9988776655', school: 'KUMAR MATRICULATION', address1: 'RS Puram', address2: 'Coimbatore - 641002', district: 'Coimbatore', phone: '0422-254567' },
-];
 
 export default function CreateBill() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [isEditMode, setIsEditMode] = useState(false);
+  
   const printRef = useRef();
+  
+  const [dbClients, setDbClients] = useState([]);
+
+  const [booksList, setBooksList] = useState([]);
+  const [transportsList, setTransportsList] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('clients');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const mapped = parsed.map(c => ({
+        name: c.ledgerName || '',
+        mobile: c.mobileNo || '',
+        school: c.printName || '',
+        address1: c.address || '',
+        address2: c.city || '',
+        district: c.district || '',
+        phone: c.phoneNo || ''
+      }));
+      setDbClients(mapped);
+    }
+
+    // Load books
+    const defaultBooks = [
+      { id: 1, itemCode: 'BK001', hsnCode: '49011010', itemName: "10 அமுதாசுரபி தமிழ்", mrp: "120.00" },
+      { id: 2, itemCode: 'BK002', hsnCode: '49011010', itemName: "8 சமூக அறிவியல்", mrp: "110.00" },
+      { id: 3, itemCode: 'BK003', hsnCode: '49011010', itemName: "8 ச மூ வரைபட பயிற்சி", mrp: "20.00" },
+      { id: 4, itemCode: 'BK004', hsnCode: '49011010', itemName: "8 MAP DRAWING ENGLISH", mrp: "20.00" },
+      { id: 5, itemCode: 'BK005', hsnCode: '49011010', itemName: "9 ச மூ வரைபட பயிற்சி", mrp: "25.00" },
+    ];
+    let savedBooks = localStorage.getItem('books');
+    let parsedBooks = savedBooks ? JSON.parse(savedBooks) : [];
+    if (parsedBooks.length === 0) {
+      localStorage.setItem('books', JSON.stringify(defaultBooks));
+      parsedBooks = defaultBooks;
+    }
+    setBooksList(parsedBooks);
+    
+    // Load Transports
+    const savedTransports = JSON.parse(localStorage.getItem('transports') || '[]');
+    setTransportsList(savedTransports);
+    
+    // Determine next Bill No
+    const savedBills = localStorage.getItem('bills');
+    if (savedBills) {
+      const parsed = JSON.parse(savedBills);
+      
+      if (id) {
+        // Edit mode
+        const billToEdit = parsed.find(b => b.id.toString() === id);
+        if (billToEdit) {
+          setIsEditMode(true);
+          setBillInfo(billToEdit.billInfo);
+          setCustomer(billToEdit.customer);
+          setItems(billToEdit.items);
+        }
+      } else if (parsed.length > 0) {
+        // Create mode
+        const lastBillNo = parseInt(parsed[parsed.length - 1].billInfo.billNo) || 0;
+        const nextNo = String(lastBillNo + 1).padStart(3, '0');
+        setBillInfo(prev => ({ ...prev, billNo: nextNo }));
+      }
+    }
+  }, [id]);
 
   const [billInfo, setBillInfo] = useState({
-    billNo: '8200',
+    billNo: '001',
     date: new Date().toLocaleDateString('en-GB'),
     transport: 'DIRECT SALES',
     destination: '',
@@ -46,21 +102,21 @@ export default function CreateBill() {
 
   const handleMobileChange = (e) => {
     const val = e.target.value;
-    const found = dummyClients.find(c => c.mobile === val);
+    const found = dbClients.find(c => c.mobile === val);
     if (found) {
       setCustomer(found);
     } else {
-      setCustomer({ name: '', mobile: val, school: '', address1: '', address2: '', district: '', phone: '' });
+      setCustomer(prev => ({ ...prev, mobile: val }));
     }
   };
 
-  const handleClientChange = (e) => {
+  const handleNameChange = (e) => {
     const val = e.target.value;
-    const found = dummyClients.find(c => c.name === val);
+    const found = dbClients.find(c => c.name === val);
     if (found) {
       setCustomer(found);
     } else {
-      setCustomer({ name: val, mobile: '', school: '', address1: '', address2: '', district: '', phone: '' });
+      setCustomer(prev => ({ ...prev, name: val }));
     }
   };
 
@@ -72,9 +128,18 @@ export default function CreateBill() {
   const [activeRowIndex, setActiveRowIndex] = useState(null);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
 
+  // States for Customer Autocomplete
+  const [activeSearchField, setActiveSearchField] = useState(null);
+  const [activeClientOptionIndex, setActiveClientOptionIndex] = useState(0);
+  
+  // States for Transport Autocomplete
+  const [showTransportDropdown, setShowTransportDropdown] = useState(false);
+  const [filteredTransports, setFilteredTransports] = useState([]);
+  const [activeTransportIndex, setActiveTransportIndex] = useState(0);
+
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      if (e.key === 'F2') {
+      if (e.key === 'F2' || (e.ctrlKey && e.key.toLowerCase() === 's')) {
         e.preventDefault();
         handleSave();
       }
@@ -89,18 +154,57 @@ export default function CreateBill() {
   });
 
   const handleSave = () => {
+    // Save to localStorage
+    const savedBills = localStorage.getItem('bills');
+    const parsedBills = savedBills ? JSON.parse(savedBills) : [];
+    
+    // Only save valid items
+    const validItems = items.filter(i => i.itemName);
+    if (validItems.length === 0) {
+      Swal.fire('Error', 'Please add at least one item to save the bill.', 'error');
+      return;
+    }
+
+    const newBill = {
+      id: Date.now(),
+      billInfo,
+      customer,
+      items: validItems,
+      totals
+    };
+    
+    if (isEditMode) {
+      const updatedBills = parsedBills.map(b => b.id.toString() === id ? newBill : b);
+      localStorage.setItem('bills', JSON.stringify(updatedBills));
+    } else {
+      parsedBills.push(newBill);
+      localStorage.setItem('bills', JSON.stringify(parsedBills));
+    }
+
     Swal.fire({
-      title: 'Bill Saved!',
-      text: 'Do you want to download the invoice as PDF?',
+      title: isEditMode ? 'Bill Updated Successfully!' : 'Bill Saved Successfully!',
+      text: 'Do you want to print the bill?',
       icon: 'success',
       showCancelButton: true,
-      confirmButtonText: 'Yes, Download',
+      confirmButtonText: 'Yes, Print',
       cancelButtonText: 'No',
       confirmButtonColor: '#2563eb'
     }).then((result) => {
       if (result.isConfirmed) {
-        // Trigger react-to-print which opens the native print dialog
         handlePrint();
+      }
+      if (isEditMode) {
+        navigate('/bill/all');
+      } else {
+        // Prepare next bill No
+        const nextNo = String(parseInt(billInfo.billNo) + 1).padStart(3, '0');
+        setBillInfo(prev => ({ ...prev, billNo: nextNo }));
+        
+        // Reset customer and items for new bill
+        setCustomer({
+          name: '', school: '', address1: '', address2: '', district: '', phone: '', mobile: ''
+        });
+        setItems([{ id: Date.now(), itemCode: '', hsnCode: '', itemName: '', rate: '', qty: '', teachersCopy: '0', amount: '' }]);
       }
     });
   };
@@ -108,7 +212,7 @@ export default function CreateBill() {
   const handleKeyDown = (e, rowIndex, field) => {
     // Autocomplete navigation logic
     if (field === 'itemName' && activeRowIndex === rowIndex) {
-      const filteredBooks = dummyBooks.filter(b => b.name.toLowerCase().includes(items[rowIndex].itemName.toLowerCase()));
+      const filteredBooks = booksList.filter(b => (b.itemName || '').toLowerCase().includes((items[rowIndex].itemName || '').toLowerCase()));
       
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -209,12 +313,13 @@ export default function CreateBill() {
 
   const handleItemSelection = (index, book) => {
     const newItems = [...items];
-    newItems[index].itemName = book.name;
-    newItems[index].itemCode = book.code;
-    newItems[index].hsnCode = book.hsn;
-    newItems[index].rate = book.rate.toFixed(2);
+    newItems[index].itemName = book.itemName || '';
+    newItems[index].itemCode = book.itemCode || '';
+    newItems[index].hsnCode = book.hsnCode || '';
+    const rate = parseFloat(book.mrp) || parseFloat(book.splPrice1) || 0;
+    newItems[index].rate = rate.toFixed(2);
     const qty = parseFloat(newItems[index].qty) || 0;
-    if (qty) newItems[index].amount = (book.rate * qty).toFixed(2);
+    if (qty) newItems[index].amount = (rate * qty).toFixed(2);
     setItems(newItems);
   };
 
@@ -263,24 +368,98 @@ export default function CreateBill() {
 
   // Close dropdown if clicked outside
   useEffect(() => {
-    const handleClickOutside = () => setActiveRowIndex(null);
+    const handleClickOutside = () => {
+      setActiveRowIndex(null);
+      setActiveSearchField(null);
+      setShowTransportDropdown(false);
+    };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  const filteredClientsByMobile = dbClients.filter(c => c.mobile && c.mobile.includes(customer.mobile));
+  const filteredClientsByName = dbClients.filter(c => c.name && c.name.toLowerCase().includes((customer.name || '').toLowerCase()));
+
+  const handleClientKeyDown = (e, type) => {
+    const list = type === 'mobile' ? filteredClientsByMobile : filteredClientsByName;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveClientOptionIndex(prev => (prev < list.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveClientOptionIndex(prev => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (list.length > 0 && activeSearchField) {
+        setCustomer(list[activeClientOptionIndex]);
+        setActiveSearchField(null);
+        if (type === 'mobile') document.getElementById('clientName').focus();
+        else document.getElementById('transport').focus();
+      } else {
+        setActiveSearchField(null);
+        if (type === 'mobile') document.getElementById('clientName').focus();
+        else document.getElementById('transport').focus();
+      }
+    } else if (e.key === 'Escape') {
+      setActiveSearchField(null);
+    }
+  };
+
+  // Transport handlers
+  const handleTransportChange = (e) => {
+    const val = e.target.value;
+    setBillInfo({ ...billInfo, transport: val });
+    
+    if (val.trim()) {
+      const filtered = transportsList.filter(t => {
+        const tName = typeof t === 'string' ? t : t.name;
+        return tName.toLowerCase().includes(val.toLowerCase());
+      });
+      setFilteredTransports(filtered);
+      setShowTransportDropdown(true);
+    } else {
+      setShowTransportDropdown(false);
+    }
+  };
+
+  const handleTransportKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveTransportIndex(prev => (prev < filteredTransports.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveTransportIndex(prev => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (showTransportDropdown && filteredTransports.length > 0) {
+        const selected = filteredTransports[activeTransportIndex];
+        const tName = typeof selected === 'string' ? selected : selected.name;
+        const tDest = typeof selected === 'string' ? '' : selected.destination;
+        setBillInfo(prev => ({ ...prev, transport: tName.toUpperCase(), destination: tDest.toUpperCase() }));
+        setShowTransportDropdown(false);
+        document.getElementById('bundles').focus();
+      } else {
+        setShowTransportDropdown(false);
+        document.getElementById('destination').focus();
+      }
+    } else if (e.key === 'Escape') {
+      setShowTransportDropdown(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white uppercase">Create Bill</h1>
-          <p className="text-slate-500 text-sm">Press <kbd className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-xs">Enter</kbd> to move next. Press <kbd className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-xs">F2</kbd> to Save.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white uppercase">{isEditMode ? 'Edit Bill' : 'Create Bill'}</h1>
+          <p className="text-slate-500 text-sm">Press <kbd className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-xs">Enter</kbd> to move next. Press <kbd className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-xs">F2</kbd> or <kbd className="bg-slate-200 dark:bg-slate-700 px-1 rounded text-xs">Ctrl+S</kbd> to {isEditMode ? 'Update' : 'Save'}.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={handlePrint} className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer">
             <Printer size={18} /> Print
           </button>
           <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer">
-            <Save size={18} /> Save as PDF (F2)
+            <Save size={18} /> {isEditMode ? 'Update (Ctrl+S)' : 'Save (Ctrl+S)'}
           </button>
         </div>
       </div>
@@ -293,32 +472,83 @@ export default function CreateBill() {
           
           <div className="flex flex-col gap-3">
             <div className="flex gap-4">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Mobile No</label>
-                <input 
-                  id="mobileNo"
-                  type="text" 
-                  value={customer.mobile}
-                  onChange={handleMobileChange}
-                  onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('clientSelect').focus(); }}}
-                  placeholder="Type mobile..."
-                  className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input 
+                    id="mobileNo"
+                    type="text" 
+                    autoComplete="off"
+                    value={customer.mobile}
+                    onChange={handleMobileChange}
+                    onFocus={() => { setActiveSearchField('mobile'); setActiveClientOptionIndex(0); }}
+                    onKeyDown={(e) => handleClientKeyDown(e, 'mobile')}
+                    placeholder="Type mobile..."
+                    className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
+                  />
+                  {activeSearchField === 'mobile' && customer.mobile && (
+                    <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredClientsByMobile.length > 0 ? (
+                        <ul className="py-1">
+                          {filteredClientsByMobile.map((c, i) => (
+                            <li 
+                              key={i}
+                              onClick={() => {
+                                setCustomer(c);
+                                setActiveSearchField(null);
+                                document.getElementById('clientName').focus();
+                              }}
+                              className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            >
+                              {c.mobile} - {c.name}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-500 italic">No matches</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex-[2]">
+              <div className="flex-[2] relative">
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Customer / Ledger Name</label>
-                <select 
-                  id="clientSelect"
-                  value={customer.name}
-                  onChange={handleClientChange}
-                  onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('transport').focus(); }}}
-                  className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
-                >
-                  <option value="">Select a Client</option>
-                  {dummyClients.map(c => (
-                    <option key={c.mobile} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input 
+                    id="clientName"
+                    type="text"
+                    autoComplete="off"
+                    value={customer.name}
+                    onChange={handleNameChange}
+                    onFocus={() => { setActiveSearchField('name'); setActiveClientOptionIndex(0); }}
+                    onKeyDown={(e) => handleClientKeyDown(e, 'name')}
+                    placeholder="Type name..."
+                    className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
+                  />
+                  {activeSearchField === 'name' && customer.name && (
+                    <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredClientsByName.length > 0 ? (
+                        <ul className="py-1">
+                          {filteredClientsByName.map((c, i) => (
+                            <li 
+                              key={i}
+                              onClick={() => {
+                                setCustomer(c);
+                                setActiveSearchField(null);
+                                document.getElementById('transport').focus();
+                              }}
+                              className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            >
+                              {c.name}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-slate-500 italic">No matches</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -355,16 +585,46 @@ export default function CreateBill() {
               className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
             />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 relative">
             <label className="text-xs font-semibold text-slate-500">Transport</label>
-            <input 
-              id="transport"
-              type="text" 
-              value={billInfo.transport}
-              onChange={(e) => setBillInfo({...billInfo, transport: e.target.value})}
-              onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('destination').focus(); }}}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <input 
+                id="transport"
+                type="text" 
+                autoComplete="off"
+                value={billInfo.transport}
+                onChange={handleTransportChange}
+                onKeyDown={handleTransportKeyDown}
+                onFocus={() => { if(filteredTransports.length > 0) setShowTransportDropdown(true); setActiveTransportIndex(0); }}
+                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
+              />
+              {showTransportDropdown && filteredTransports.length > 0 && billInfo.transport && (
+                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  <ul className="py-1">
+                    {filteredTransports.map((t, i) => {
+                      const tName = typeof t === 'string' ? t : t.name;
+                      const tDest = typeof t === 'string' ? '' : t.destination;
+                      return (
+                        <li 
+                          key={i}
+                          onClick={() => {
+                            setBillInfo(prev => ({ ...prev, transport: tName.toUpperCase(), destination: tDest.toUpperCase() }));
+                            setShowTransportDropdown(false);
+                            document.getElementById('bundles').focus();
+                          }}
+                          className={`px-3 py-2 cursor-pointer text-sm ${activeTransportIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{tName}</span>
+                            {tDest && <span className="text-xs text-slate-500 dark:text-slate-400">{tDest}</span>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-slate-500">Destination</label>
@@ -432,7 +692,7 @@ export default function CreateBill() {
             </thead>
             <tbody>
               {items.map((item, index) => {
-                const filteredBooks = dummyBooks.filter(b => b.name.toLowerCase().includes((item.itemName || '').toLowerCase()));
+                const filteredBooks = booksList.filter(b => (b.itemName || '').toLowerCase().includes((item.itemName || '').toLowerCase()));
                 
                 return (
                   <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-[#1a1a2e]/50">
@@ -487,8 +747,8 @@ export default function CreateBill() {
                                     }}
                                     className={`px-3 py-2 cursor-pointer text-sm flex justify-between items-center ${activeOptionIndex === bIndex ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                                   >
-                                    <span>{book.name}</span>
-                                    <span className="text-xs text-slate-400">₹{book.rate.toFixed(2)}</span>
+                                    <span>{book.itemName}</span>
+                                    <span className="text-xs text-slate-400">₹{(parseFloat(book.mrp) || 0).toFixed(2)}</span>
                                   </li>
                                 ))}
                               </ul>

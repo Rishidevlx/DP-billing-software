@@ -1,45 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Search, Filter, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Dummy Clients Data
-const dummyClients = [
-  { id: 1, ledgerName: 'Siva Bookstore', group: 'Sundry Debtors', partyType: 'Customer', city: 'Chennai', district: 'Chennai', state: 'Tamil Nadu', mobileNo: '9876543210', crLimit: '50000', badDebtor: false },
-  { id: 2, ledgerName: 'National Publishers', group: 'Sundry Creditors', partyType: 'Supplier', city: 'Delhi', district: 'New Delhi', state: 'Delhi', mobileNo: '8877665544', crLimit: '0', badDebtor: false },
-  { id: 3, ledgerName: 'Kumar Stationery', group: 'Sundry Debtors', partyType: 'Dealer', city: 'Coimbatore', district: 'Coimbatore', state: 'Tamil Nadu', mobileNo: '9988776655', crLimit: '25000', badDebtor: true },
-  { id: 4, ledgerName: 'Ravi & Co', group: 'Sundry Creditors', partyType: 'Supplier', city: 'Mumbai', district: 'Mumbai', state: 'Maharashtra', mobileNo: '9123456780', crLimit: '0', badDebtor: false },
-  { id: 5, ledgerName: 'A1 Books', group: 'Sundry Debtors', partyType: 'Customer', city: 'Madurai', district: 'Madurai', state: 'Tamil Nadu', mobileNo: '9845123670', crLimit: '10000', badDebtor: false },
-  { id: 6, ledgerName: 'Vijay Enterprises', group: 'Sundry Debtors', partyType: 'Dealer', city: 'Trichy', district: 'Trichy', state: 'Tamil Nadu', mobileNo: '7766554433', crLimit: '75000', badDebtor: false },
-  { id: 7, ledgerName: 'Global Papers', group: 'Sundry Creditors', partyType: 'Supplier', city: 'Kochi', district: 'Ernakulam', state: 'Kerala', mobileNo: '8090706050', crLimit: '0', badDebtor: false },
-  { id: 8, ledgerName: 'Murugan Stores', group: 'Sundry Debtors', partyType: 'Customer', city: 'Salem', district: 'Salem', state: 'Tamil Nadu', mobileNo: '9554433221', crLimit: '15000', badDebtor: true },
-];
+import Swal from 'sweetalert2';
 
 export default function ClientsDetails() {
   const navigate = useNavigate();
+
+  // Load Clients from LocalStorage
+  const [clients, setClients] = useState(() => {
+    const saved = localStorage.getItem('clients');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [partyTypeFilter, setPartyTypeFilter] = useState('');
   const [badDebtorFilter, setBadDebtorFilter] = useState('');
-  const [stateFilter, setStateFilter] = useState('');
-  const [districtFilter, setDistrictFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
 
   // Filtered Data State
-  const [filteredClients, setFilteredClients] = useState(dummyClients);
+  const [filteredClients, setFilteredClients] = useState(clients);
+
+  const handleDelete = (id) => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const updatedClients = clients.filter(c => c.id !== id);
+        setClients(updatedClients);
+        setFilteredClients(updatedClients);
+        localStorage.setItem('clients', JSON.stringify(updatedClients));
+        Swal.fire('Deleted!', 'Client has been deleted.', 'success');
+      }
+    });
+  };
 
   const handleEdit = (id) => {
     navigate(`/clients/edit/${id}`);
   };
 
-  const handleApplyFilters = () => {
-    let result = dummyClients;
+  // Live filter effect
+  useEffect(() => {
+    let result = clients;
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter(client => 
-        client.ledgerName.toLowerCase().includes(lowerSearch) || 
-        client.mobileNo.includes(lowerSearch)
+        (client.ledgerName || '').toLowerCase().includes(lowerSearch) || 
+        (client.mobileNo || '').includes(lowerSearch)
       );
     }
 
@@ -59,34 +74,25 @@ export default function ClientsDetails() {
       }
     }
 
-    if (stateFilter) {
-      const lowerState = stateFilter.toLowerCase();
-      result = result.filter(client => client.state.toLowerCase().includes(lowerState));
-    }
-
-    if (districtFilter) {
-      const lowerDist = districtFilter.toLowerCase();
-      result = result.filter(client => client.district.toLowerCase().includes(lowerDist) || client.city.toLowerCase().includes(lowerDist));
+    if (cityFilter) {
+      const lowerCity = cityFilter.toLowerCase();
+      result = result.filter(client => (client.city || '').toLowerCase().includes(lowerCity));
     }
 
     setFilteredClients(result);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      handleApplyFilters();
-    }
-  };
+  }, [clients, searchTerm, groupFilter, partyTypeFilter, badDebtorFilter, cityFilter]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setGroupFilter('');
     setPartyTypeFilter('');
     setBadDebtorFilter('');
-    setStateFilter('');
-    setDistrictFilter('');
-    setFilteredClients(dummyClients);
+    setCityFilter('');
+    setFilteredClients(clients);
   };
+
+  const uniqueCities = [...new Set(clients.map(c => c.city).filter(Boolean))].sort();
+  const uniquePartyTypes = [...new Set(clients.map(c => c.partyType).filter(Boolean))].sort();
 
   return (
     <div className="max-w-full mx-auto pb-10">
@@ -106,7 +112,6 @@ export default function ClientsDetails() {
                 type="text" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleKeyDown}
                 placeholder="Search by Name or Mobile..." 
                 className="w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E0D3A]/20 dark:focus:ring-slate-700 transition-colors text-sm"
               />
@@ -114,41 +119,16 @@ export default function ClientsDetails() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">State</label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">City</label>
             <select 
-              value={stateFilter}
-              onChange={(e) => {
-                setStateFilter(e.target.value);
-                // Also trigger filter application if needed, but they have Enter/Apply for search. For select, onChange is usually enough to apply, but we can stick to Apply button / Enter key flow.
-              }}
-              onKeyDown={handleKeyDown}
+              value={cityFilter}
+              onChange={(e) => setCityFilter(e.target.value)}
               className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E0D3A]/20 dark:focus:ring-slate-700 transition-colors text-sm"
             >
-              <option value="">All States</option>
-              <option value="Tamil Nadu">Tamil Nadu</option>
-              <option value="Kerala">Kerala</option>
-              <option value="Maharashtra">Maharashtra</option>
-              <option value="Delhi">Delhi</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">District / City</label>
-            <select 
-              value={districtFilter}
-              onChange={(e) => setDistrictFilter(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E0D3A]/20 dark:focus:ring-slate-700 transition-colors text-sm"
-            >
-              <option value="">All Districts</option>
-              <option value="Chennai">Chennai</option>
-              <option value="Coimbatore">Coimbatore</option>
-              <option value="Madurai">Madurai</option>
-              <option value="Trichy">Trichy</option>
-              <option value="Salem">Salem</option>
-              <option value="Ernakulam">Ernakulam</option>
-              <option value="New Delhi">New Delhi</option>
-              <option value="Mumbai">Mumbai</option>
+              <option value="">All Cities</option>
+              {uniqueCities.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
             </select>
           </div>
 
@@ -159,19 +139,16 @@ export default function ClientsDetails() {
               onChange={(e) => setPartyTypeFilter(e.target.value)}
               className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E0D3A]/20 dark:focus:ring-slate-700 transition-colors text-sm"
             >
-              <option value="">All</option>
-              <option value="Customer">Customer</option>
-              <option value="Supplier">Supplier</option>
-              <option value="Dealer">Dealer</option>
+              <option value="">All Party Types</option>
+              {uniquePartyTypes.map(pt => (
+                <option key={pt} value={pt}>{pt}</option>
+              ))}
             </select>
           </div>
 
           <div className="flex gap-2 xl:col-span-2">
-            <button onClick={handleApplyFilters} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors cursor-pointer border-none flex items-center justify-center gap-2">
-              <Filter size={16} /> Apply
-            </button>
-            <button onClick={handleResetFilters} className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2D] px-4 py-2 rounded-md font-medium text-sm transition-colors cursor-pointer bg-transparent flex items-center justify-center gap-2">
-              <RefreshCw size={16} /> Reset
+            <button onClick={handleResetFilters} className="w-full border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2D] px-4 py-2 rounded-md font-medium text-sm transition-colors cursor-pointer bg-transparent flex items-center justify-center gap-2">
+              <RefreshCw size={16} /> Reset Filters
             </button>
           </div>
 
@@ -190,7 +167,6 @@ export default function ClientsDetails() {
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Party Type</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">City</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mobile No</th>
-                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Cr. Limit</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -214,7 +190,6 @@ export default function ClientsDetails() {
                   </td>
                   <td className="p-4 text-sm text-slate-700 dark:text-slate-300">{client.city}</td>
                   <td className="p-4 text-sm text-slate-700 dark:text-slate-300">{client.mobileNo}</td>
-                  <td className="p-4 text-sm font-medium text-slate-900 dark:text-slate-100 text-right">₹{client.crLimit}</td>
                   
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-2">
@@ -226,6 +201,7 @@ export default function ClientsDetails() {
                         <Pencil size={16} />
                       </button>
                       <button 
+                        onClick={() => handleDelete(client.id)}
                         className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                         title="Delete"
                       >

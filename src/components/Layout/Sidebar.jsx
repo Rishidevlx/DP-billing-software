@@ -11,7 +11,9 @@ import {
   UserPlus,
   FilePlus,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Truck,
+  Package
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
@@ -27,6 +29,7 @@ const menuItems = [
     subItems: [
       { title: 'All Bills', path: '/bill/all', icon: <FileText size={16} /> },
       { title: 'Create Bill', path: '/bill/create', icon: <FilePlus size={16} /> },
+      { title: 'LR Details', path: '/bill/lr', icon: <Receipt size={16} /> },
     ]
   },
   {
@@ -34,22 +37,34 @@ const menuItems = [
     icon: <Book size={20} />,
     subItems: [
       { title: 'Add Books', path: '/books/add', icon: <FilePlus size={16} /> },
-      { title: 'Add Category', path: '/books/category', icon: <FilePlus size={16} /> },
       { title: 'Books Details', path: '/books/details', icon: <FileText size={16} /> },
     ]
   },
   {
-    title: 'Clients / Customers',
+    title: 'Clients',
     icon: <Users size={20} />,
     subItems: [
       { title: 'Add Clients', path: '/clients/add', icon: <UserPlus size={16} /> },
-      { title: 'Clients Details', path: '/clients/details', icon: <Users size={16} /> },
+      { title: 'Clients Details', path: '/clients/details', icon: <FileText size={16} /> }
     ]
+  },
+  {
+    title: 'Inventory',
+    icon: <Package size={20} />,
+    path: '/inventory'
+  },
+  {
+    title: 'Transport',
+    icon: <Truck size={20} />,
+    path: '/transport',
   },
   {
     title: 'Reports',
     icon: <BarChart2 size={20} />,
-    path: '/reports',
+    subItems: [
+      { title: 'Customer Receipt', path: '/reports/receipt', icon: <Receipt size={16} /> },
+      { title: 'Ledger Report', path: '/reports/ledger', icon: <FileText size={16} /> },
+    ]
   },
   {
     title: 'Settings',
