@@ -5,6 +5,7 @@ import { useReactToPrint } from 'react-to-print';
 import PrintInvoice from './PrintInvoice';
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js';
+import { generateEInvoice } from '../../utils/einvoiceApi';
 
 
 
@@ -58,22 +59,39 @@ export default function CreateBill() {
     
     // Determine next Bill No
     const savedBills = localStorage.getItem('bills');
-    if (savedBills) {
-      const parsed = JSON.parse(savedBills);
+    const parsed = savedBills ? JSON.parse(savedBills) : [];
       
-      if (id) {
-        // Edit mode
-        const billToEdit = parsed.find(b => b.id.toString() === id);
-        if (billToEdit) {
-          setIsEditMode(true);
-          setBillInfo(billToEdit.billInfo);
-          setCustomer(billToEdit.customer);
-          setItems(billToEdit.items);
+    if (id) {
+      // Edit mode
+      const billToEdit = parsed.find(b => b.id.toString() === id);
+      if (billToEdit) {
+        setIsEditMode(true);
+        setBillInfo(billToEdit.billInfo);
+        setCustomer(billToEdit.customer);
+        setItems(billToEdit.items);
+        if (billToEdit.billSettings) {
+          setBillSettings(prev => ({ ...prev, ...billToEdit.billSettings }));
         }
-      } else if (parsed.length > 0) {
-        // Create mode
-        const lastBillNo = parseInt(parsed[parsed.length - 1].billInfo.billNo) || 0;
-        const nextNo = String(lastBillNo + 1).padStart(3, '0');
+      }
+    } else {
+      // Create mode
+      const lastBillNo = parsed.length > 0 ? (parseInt(parsed[parsed.length - 1].billInfo.billNo) || 0) : 0;
+      const nextNo = String(lastBillNo + 1).padStart(3, '0');
+      
+      const savedDraft = localStorage.getItem('billDraft');
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          if (draft.billInfo) setBillInfo({ ...draft.billInfo, billNo: nextNo });
+          else setBillInfo(prev => ({ ...prev, billNo: nextNo }));
+          
+          if (draft.customer) setCustomer(draft.customer);
+          if (draft.items) setItems(draft.items);
+          if (draft.billSettings) setBillSettings(draft.billSettings);
+        } catch (e) {
+          setBillInfo(prev => ({ ...prev, billNo: nextNo }));
+        }
+      } else {
         setBillInfo(prev => ({ ...prev, billNo: nextNo }));
       }
     }
@@ -85,9 +103,14 @@ export default function CreateBill() {
     transport: 'DIRECT SALES',
     destination: '',
     bundles: '0',
-    lrDate: new Date().toLocaleDateString('en-GB'),
+    lrDate: '',
     lrNo: '',
-    eWayBillNo: ''
+    eWayBillNo: '',
+    isEbill: false,
+    irn: '',
+    ackNo: '',
+    ackDate: '',
+    qrCode: ''
   });
 
   const [customer, setCustomer] = useState({
@@ -98,6 +121,26 @@ export default function CreateBill() {
     district: '',
     phone: '',
     mobile: ''
+  });
+
+  const [billSettings, setBillSettings] = useState(() => {
+    const saved = localStorage.getItem('defaultBillSettings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch(e) {}
+    }
+    return {
+      itemDiscount: '',
+      cash: '',
+      discountPercent: '',
+      discountAmount: '',
+      freight: '',
+      roundOff: '',
+      inclTax: false,
+      sendWhatsapp: false,
+      priceType: 'mrp'
+    };
   });
 
   const handleMobileChange = (e) => {
@@ -148,12 +191,25 @@ export default function CreateBill() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [items, billInfo, customer]);
 
+  // Auto-save draft whenever inputs change
+  useEffect(() => {
+    if (!isEditMode) {
+      const draft = {
+        billInfo,
+        customer,
+        items,
+        billSettings
+      };
+      localStorage.setItem('billDraft', JSON.stringify(draft));
+    }
+  }, [billInfo, customer, items, billSettings, isEditMode]);
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Invoice_${billInfo.billNo}`,
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Save to localStorage
     const savedBills = localStorage.getItem('bills');
     const parsedBills = savedBills ? JSON.parse(savedBills) : [];
@@ -165,14 +221,84 @@ export default function CreateBill() {
       return;
     }
 
+    let updatedBillInfo = { ...billInfo };
+
+    // Auto Generate E-Invoice details if enabled and not already generated
+    if (updatedBillInfo.isEbill && !updatedBillInfo.irn) {
+      Swal.fire({
+        title: 'Generating E-Invoice...',
+        text: 'Please wait while we fetch details from the portal.',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      try {
+        const response = await generateEInvoice({
+          billInfo: updatedBillInfo,
+          customer,
+          items: validItems,
+          totals,
+          billSettings
+        });
+        
+        if (response.success) {
+          updatedBillInfo = {
+            ...updatedBillInfo,
+            irn: response.data.irn,
+            ackNo: response.data.ackNo,
+            ackDate: response.data.ackDate,
+            qrCode: response.data.qrCode
+          };
+          setBillInfo(updatedBillInfo);
+          Swal.close();
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Failed to generate E-Invoice. Please check your settings.', 'error');
+        return;
+      }
+    }
+
     const newBill = {
-      id: Date.now(),
-      billInfo,
+      id: isEditMode ? parseInt(id) : Date.now(),
+      billInfo: updatedBillInfo,
       customer,
       items: validItems,
-      totals
+      totals,
+      billSettings
     };
     
+    // --- STOCK MANAGEMENT START ---
+    const savedBooks = localStorage.getItem('books');
+    let currentBooks = savedBooks ? JSON.parse(savedBooks) : [];
+
+    if (isEditMode) {
+      const originalBill = parsedBills.find(b => b.id.toString() === id);
+      if (originalBill && originalBill.items) {
+        // Revert previous quantities
+        originalBill.items.forEach(oldItem => {
+          if (!oldItem.itemName) return;
+          const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
+          if (bookIndex !== -1) {
+            currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) + (parseFloat(oldItem.qty) || 0);
+          }
+        });
+      }
+    }
+
+    // Deduct new quantities
+    validItems.forEach(newItem => {
+      const bookIndex = currentBooks.findIndex(b => b.itemCode === newItem.itemCode && b.itemName === newItem.itemName);
+      if (bookIndex !== -1) {
+        currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) - (parseFloat(newItem.qty) || 0);
+      }
+    });
+
+    localStorage.setItem('books', JSON.stringify(currentBooks));
+    setBooksList(currentBooks); // update local state
+    // --- STOCK MANAGEMENT END ---
+
     if (isEditMode) {
       const updatedBills = parsedBills.map(b => b.id.toString() === id ? newBill : b);
       localStorage.setItem('bills', JSON.stringify(updatedBills));
@@ -196,6 +322,9 @@ export default function CreateBill() {
       if (isEditMode) {
         navigate('/bill/all');
       } else {
+        // Clear draft after successful save
+        localStorage.removeItem('billDraft');
+
         // Prepare next bill No
         const nextNo = String(parseInt(billInfo.billNo) + 1).padStart(3, '0');
         setBillInfo(prev => ({ ...prev, billNo: nextNo }));
@@ -205,6 +334,18 @@ export default function CreateBill() {
           name: '', school: '', address1: '', address2: '', district: '', phone: '', mobile: ''
         });
         setItems([{ id: Date.now(), itemCode: '', hsnCode: '', itemName: '', rate: '', qty: '', teachersCopy: '0', amount: '' }]);
+        
+        // Save current settings as default for the next bills
+        localStorage.setItem('defaultBillSettings', JSON.stringify({
+          ...billSettings,
+          cash: '' // reset cash as it's specific to each bill
+        }));
+        
+        // Retain settings on UI but clear cash
+        setBillSettings(prev => ({
+          ...prev,
+          cash: ''
+        }));
       }
     });
   };
@@ -250,8 +391,14 @@ export default function CreateBill() {
     if (e.key === 'Enter' || e.key === 'ArrowRight') {
       if (field === 'itemName' && activeRowIndex === rowIndex) return; // handled above
       
+      if (field === 'itemCode' && !items[rowIndex].itemCode && e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('discountPercent')?.focus();
+        return;
+      }
+      
       e.preventDefault();
-      const fields = ['itemCode', 'hsnCode', 'itemName', 'rate', 'qty', 'teachersCopy', 'amount'];
+      const fields = ['itemCode', 'itemName', 'rate', 'qty', 'teachersCopy', 'amount'];
       const currentIndex = fields.indexOf(field);
       
       if (currentIndex < fields.length - 1) {
@@ -272,7 +419,7 @@ export default function CreateBill() {
       }
     } else if (e.key === 'ArrowLeft') {
        e.preventDefault();
-       const fields = ['itemCode', 'hsnCode', 'itemName', 'rate', 'qty', 'teachersCopy', 'amount'];
+       const fields = ['itemCode', 'itemName', 'rate', 'qty', 'teachersCopy', 'amount'];
        const currentIndex = fields.indexOf(field);
        if (currentIndex > 0) {
          const prevField = fields[currentIndex - 1];
@@ -315,8 +462,16 @@ export default function CreateBill() {
     const newItems = [...items];
     newItems[index].itemName = book.itemName || '';
     newItems[index].itemCode = book.itemCode || '';
-    newItems[index].hsnCode = book.hsnCode || '';
-    const rate = parseFloat(book.mrp) || parseFloat(book.splPrice1) || 0;
+    
+    // Determine rate based on selected Price Type
+    let rate = parseFloat(book.mrp) || 0;
+    const pt = billSettings.priceType;
+    if (pt === 'agent' && book.splPrice1) rate = parseFloat(book.splPrice1);
+    else if (pt === 'school' && book.splPrice2) rate = parseFloat(book.splPrice2);
+    else if (pt === 'customer' && book.splPrice3) rate = parseFloat(book.splPrice3);
+    // fallback to MRP if the selected spl price is 0 or empty, or if MRP is selected
+    if (!rate && parseFloat(book.mrp)) rate = parseFloat(book.mrp);
+
     newItems[index].rate = rate.toFixed(2);
     const qty = parseFloat(newItems[index].qty) || 0;
     if (qty) newItems[index].amount = (rate * qty).toFixed(2);
@@ -346,13 +501,42 @@ export default function CreateBill() {
     setItems(newItems);
   };
 
-  const totals = items.reduce((acc, item) => {
-    acc.qty += parseFloat(item.qty) || 0;
-    acc.amount += parseFloat(item.amount) || 0;
-    return acc;
-  }, { qty: 0, amount: 0 });
+  const handleSettingChange = (field, value) => {
+    const newSettings = { ...billSettings, [field]: value };
+    
+    // Auto calculate discount amount if percentage changes
+    if (field === 'discountPercent') {
+      const grossAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+      const percent = parseFloat(value) || 0;
+      if (percent > 0) {
+        newSettings.discountAmount = ((grossAmount * percent) / 100).toFixed(2);
+      } else {
+        newSettings.discountAmount = '';
+      }
+    }
+    // Auto calculate discount percent if amount changes manually? We'll leave it as is or recalculate
+    
+    setBillSettings(newSettings);
+  };
 
-  // Map to the format PrintInvoice expects
+  const grossAmount = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+  const totalQty = items.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0);
+  
+  const discountAmt = parseFloat(billSettings.discountAmount) || 0;
+  const freightAmt = parseFloat(billSettings.freight) || 0;
+  const roundOffAmt = parseFloat(billSettings.roundOff) || 0;
+  
+  const netAmount = grossAmount - discountAmt + freightAmt + roundOffAmt;
+  const balance = netAmount - (parseFloat(billSettings.cash) || 0);
+
+  const totals = {
+    qty: totalQty,
+    amount: netAmount, // Keeping 'amount' for backwards compatibility, but it's netAmount now
+    grossAmount: grossAmount,
+    netAmount: netAmount,
+    balance: balance
+  };
+
   const printData = {
     billInfo, 
     customer, 
@@ -363,7 +547,8 @@ export default function CreateBill() {
       teachersCopy: i.teachersCopy,
       amount: i.amount
     })), 
-    totals
+    totals,
+    billSettings
   };
 
   // Close dropdown if clicked outside
@@ -410,16 +595,12 @@ export default function CreateBill() {
     const val = e.target.value;
     setBillInfo({ ...billInfo, transport: val });
     
-    if (val.trim()) {
-      const filtered = transportsList.filter(t => {
-        const tName = typeof t === 'string' ? t : t.name;
-        return tName.toLowerCase().includes(val.toLowerCase());
-      });
-      setFilteredTransports(filtered);
-      setShowTransportDropdown(true);
-    } else {
-      setShowTransportDropdown(false);
-    }
+    const filtered = transportsList.filter(t => {
+      const tName = typeof t === 'string' ? t : t.name;
+      return tName.toLowerCase().includes(val.toLowerCase());
+    });
+    setFilteredTransports(filtered);
+    setShowTransportDropdown(true);
   };
 
   const handleTransportKeyDown = (e) => {
@@ -500,7 +681,10 @@ export default function CreateBill() {
                               }}
                               className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                             >
-                              {c.mobile} - {c.name}
+                              <div className="flex flex-col">
+                                <span className="font-medium">{c.mobile} - {c.name}</span>
+                                {c.address && <span className="text-xs text-slate-500 opacity-80 truncate">{c.address}{c.city ? `, ${c.city}` : ''}</span>}
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -539,7 +723,10 @@ export default function CreateBill() {
                               }}
                               className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                             >
-                              {c.name}
+                              <div className="flex flex-col">
+                                <span className="font-medium">{c.name}</span>
+                                {c.address && <span className="text-xs text-slate-500 opacity-80 truncate">{c.address}{c.city ? `, ${c.city}` : ''}</span>}
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -550,6 +737,33 @@ export default function CreateBill() {
                   )}
                 </div>
               </div>
+              {/* E-Bill Toggle */}
+              <div className="col-span-2 md:col-span-1 mt-4 md:mt-0 flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="isEbill"
+                  checked={billInfo.isEbill || false}
+                  onChange={(e) => setBillInfo(prev => ({ ...prev, isEbill: e.target.checked }))}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="isEbill" className="text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                  Enable E-Bill Details
+                </label>
+              </div>
+
+              {/* E-Bill Info Message */}
+              {billInfo.isEbill && (
+                <div className="col-span-1 md:col-span-3 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
+                  <span className="bg-blue-100 dark:bg-blue-800 p-1 rounded-full">⚡</span>
+                  <div>
+                    {billInfo.irn ? (
+                       <span><strong>E-Invoice Generated!</strong> IRN and QR Code will be printed on the bill.</span>
+                    ) : (
+                       <span>E-Invoice details (IRN, QR Code) will be automatically generated from Govt Portal when you click <strong>Save</strong>.</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             
             {customer.name && (
@@ -561,6 +775,20 @@ export default function CreateBill() {
                 {customer.phone && <p>Phone: {customer.phone}</p>}
               </div>
             )}
+
+            <div className="mt-2 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-500">Apply Price Type</label>
+              <select 
+                value={billSettings.priceType || 'mrp'}
+                onChange={(e) => handleSettingChange('priceType', e.target.value)}
+                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+              >
+                <option value="mrp">MRP</option>
+                <option value="agent">Agent Price</option>
+                <option value="school">School Price</option>
+                <option value="customer">Customer Price</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -595,10 +823,10 @@ export default function CreateBill() {
                 value={billInfo.transport}
                 onChange={handleTransportChange}
                 onKeyDown={handleTransportKeyDown}
-                onFocus={() => { if(filteredTransports.length > 0) setShowTransportDropdown(true); setActiveTransportIndex(0); }}
+                onFocus={() => { setFilteredTransports(transportsList); setShowTransportDropdown(true); setActiveTransportIndex(0); }}
                 className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
               />
-              {showTransportDropdown && filteredTransports.length > 0 && billInfo.transport && (
+              {showTransportDropdown && filteredTransports.length > 0 && (
                 <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
                   <ul className="py-1">
                     {filteredTransports.map((t, i) => {
@@ -680,8 +908,7 @@ export default function CreateBill() {
             <thead>
               <tr className="bg-slate-100 dark:bg-[#1a1a2e] border-b border-slate-200 dark:border-slate-700">
                 <th className="p-2 w-12 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">S.No</th>
-                <th className="p-2 w-28 text-xs font-semibold text-slate-600 dark:text-slate-400">Item Code</th>
-                <th className="p-2 w-28 text-xs font-semibold text-slate-600 dark:text-slate-400">HSN Code</th>
+                <th className="p-2 w-28 text-xs font-semibold text-slate-600 dark:text-slate-400">Alias</th>
                 <th className="p-2 text-xs font-semibold text-slate-600 dark:text-slate-400">Item Name</th>
                 <th className="p-2 w-24 text-right text-xs font-semibold text-slate-600 dark:text-slate-400">Rate</th>
                 <th className="p-2 w-24 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">Qty</th>
@@ -705,16 +932,6 @@ export default function CreateBill() {
                         onChange={(e) => handleItemChange(index, 'itemCode', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, index, 'itemCode')}
                         className="w-full px-2 py-1.5 border border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-blue-500 rounded bg-transparent focus:bg-white dark:focus:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm outline-none transition-all uppercase"
-                      />
-                    </td>
-                    <td className="p-1">
-                      <input 
-                        id={`item-${index}-hsnCode`}
-                        type="text" 
-                        value={item.hsnCode}
-                        onChange={(e) => handleItemChange(index, 'hsnCode', e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, index, 'hsnCode')}
-                        className="w-full px-2 py-1.5 border border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-blue-500 rounded bg-transparent focus:bg-white dark:focus:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm outline-none transition-all"
                       />
                     </td>
                     <td className="p-1 relative">
@@ -748,7 +965,10 @@ export default function CreateBill() {
                                     className={`px-3 py-2 cursor-pointer text-sm flex justify-between items-center ${activeOptionIndex === bIndex ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                                   >
                                     <span>{book.itemName}</span>
-                                    <span className="text-xs text-slate-400">₹{(parseFloat(book.mrp) || 0).toFixed(2)}</span>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs text-blue-500 font-semibold bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">Stock: {book.currentStock || 0}</span>
+                                      <span className="text-xs text-slate-400">₹{(parseFloat(book.mrp) || 0).toFixed(2)}</span>
+                                    </div>
                                   </li>
                                 ))}
                               </ul>
@@ -809,17 +1029,116 @@ export default function CreateBill() {
                 );
               })}
             </tbody>
-            <tfoot>
-              <tr className="bg-slate-50 dark:bg-[#1a1a2e] border-t border-slate-200 dark:border-slate-700">
-                <td colSpan="4" className="p-3 text-right font-bold text-slate-700 dark:text-slate-300">TOTAL:</td>
-                <td></td>
-                <td className="p-3 text-center font-bold text-slate-900 dark:text-white">{totals.qty}</td>
-                <td></td>
-                <td className="p-3 text-right font-bold text-blue-600 dark:text-blue-400 text-lg">₹{totals.amount.toFixed(2)}</td>
-                <td></td>
-              </tr>
-            </tfoot>
           </table>
+        </div>
+      </div>
+      
+      {/* BOTTOM PANEL (As per Image 2) */}
+      <div className="mt-4 bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm flex flex-col md:flex-row p-3 gap-4">
+        {/* Left Side: Summary info */}
+        <div className="md:w-1/2 flex flex-wrap items-center gap-6 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <div>Items : <span className="text-red-500">{items.filter(i => i.itemName).length}</span></div>
+          <div>Total Qty : <span className="text-red-500">{totals.qty}</span></div>
+          <div>Taxable Value : <span className="text-red-500">{totals.grossAmount.toFixed(2)}</span></div>
+          <div>GST : <span className="text-red-500">00.00</span></div>
+        </div>
+
+        {/* Right Side: Totals and Discounts */}
+        <div className="md:w-1/2 bg-slate-100 dark:bg-[#1a1a2e] p-2 rounded border border-slate-200 dark:border-slate-700">
+          <div className="grid grid-cols-2 gap-2">
+            
+            {/* Column 1: Gross, Discounts, Freight, Round Off */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Gross Amount</label>
+                <input type="text" value={totals.grossAmount.toFixed(2)} readOnly className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" />
+              </div>
+              
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Discount</label>
+                <input type="text" value={billSettings.itemDiscount} onChange={(e) => handleSettingChange('itemDiscount', e.target.value)} className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" />
+              </div>
+              
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Bill Discount</label>
+                <div className="flex gap-1 w-28">
+                  <input 
+                    id="discountPercent"
+                    type="number" 
+                    value={billSettings.discountPercent} 
+                    onChange={(e) => handleSettingChange('discountPercent', e.target.value)} 
+                    onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('freight').focus(); }}}
+                    className="w-10 px-1 py-1 text-center border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
+                  />
+                  <input 
+                    type="number" 
+                    value={billSettings.discountAmount} 
+                    onChange={(e) => handleSettingChange('discountAmount', e.target.value)} 
+                    className="w-16 px-1 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Freight</label>
+                <input 
+                  id="freight"
+                  type="number" 
+                  value={billSettings.freight} 
+                  onChange={(e) => handleSettingChange('freight', e.target.value)} 
+                  onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('roundOff').focus(); }}}
+                  className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Round Off</label>
+                <input 
+                  id="roundOff"
+                  type="number" 
+                  value={billSettings.roundOff} 
+                  onChange={(e) => handleSettingChange('roundOff', e.target.value)} 
+                  onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('cash').focus(); }}}
+                  className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
+                />
+              </div>
+            </div>
+
+            {/* Column 2: Net Amount, Cash, Balance, Checkboxes */}
+            <div className="flex flex-col gap-1">
+              <div className="bg-blue-600 text-white p-2 rounded flex justify-between items-center h-[52px]">
+                <span className="font-bold text-sm">Net Amount</span>
+                <span className="font-bold text-xl">{totals.netAmount.toFixed(2)}</span>
+              </div>
+              
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Cash</label>
+                <input 
+                  id="cash"
+                  type="number" 
+                  value={billSettings.cash} 
+                  onChange={(e) => handleSettingChange('cash', e.target.value)} 
+                  className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-1">
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Balance</label>
+                <input type="text" value={totals.balance.toFixed(2)} readOnly className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" />
+              </div>
+
+              <div className="flex items-center gap-2 mt-2 pl-1">
+                <input type="checkbox" id="inclTax" checked={billSettings.inclTax} onChange={(e) => handleSettingChange('inclTax', e.target.checked)} className="cursor-pointer" />
+                <label htmlFor="inclTax" className="text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer">Incl Tax</label>
+              </div>
+
+              <div className="flex items-center gap-2 mt-1 pl-1">
+                <input type="checkbox" id="sendWhatsapp" checked={billSettings.sendWhatsapp} onChange={(e) => handleSettingChange('sendWhatsapp', e.target.checked)} className="cursor-pointer" />
+                <label htmlFor="sendWhatsapp" className="text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer">Send Whatsapp</label>
+              </div>
+            </div>
+            
+          </div>
         </div>
       </div>
       

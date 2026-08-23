@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Save, RefreshCw, Search, X, Check, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
 import PrintReceipt from './PrintReceipt';
 
 export default function ReceiptPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  
   const [clients, setClients] = useState([]);
   const [bills, setBills] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [originalAllocations, setOriginalAllocations] = useState({});
   
   // Form State
   const [formData, setFormData] = useState({
@@ -14,6 +20,7 @@ export default function ReceiptPage() {
     date: new Date().toISOString().split('T')[0],
     accountName: 'CASH', // default
     customerName: '',
+    billNo: '',
     amount: '',
     shortage: '',
     narrationSno: '',
@@ -24,7 +31,10 @@ export default function ReceiptPage() {
   // Autocomplete State
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [filteredClients, setFilteredClients] = useState([]);
+  const [showBillDropdown, setShowBillDropdown] = useState(false);
+  const [filteredBillsList, setFilteredBillsList] = useState([]);
   const clientInputRef = useRef(null);
+  const billInputRef = useRef(null);
   const amountInputRef = useRef(null);
   const narrationSnoRef = useRef(null);
   const narrationPgRef = useRef(null);
@@ -56,10 +66,53 @@ export default function ReceiptPage() {
     
     const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
     
-    // Auto-generate Voucher No starting from 000
-    const nextVoucher = savedReceipts.length.toString().padStart(3, '0');
-    setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
-  }, []);
+    if (id) {
+      const existingReceipt = savedReceipts.find(r => r.id.toString() === id);
+      if (existingReceipt) {
+        setIsEditMode(true);
+        setFormData({
+          voucherNo: existingReceipt.voucherNo || '',
+          date: existingReceipt.date || new Date().toISOString().split('T')[0],
+          accountName: existingReceipt.accountName || 'CASH',
+          customerName: existingReceipt.customerName || '',
+          billNo: existingReceipt.billNo || '',
+          amount: existingReceipt.amount || '',
+          shortage: existingReceipt.shortage || '',
+          narrationSno: existingReceipt.narrationSno || '',
+          narrationPg: existingReceipt.narrationPg || '',
+          narrationDate: existingReceipt.narrationDate || ''
+        });
+        setAllocatedBills(existingReceipt.allocations || {});
+        setOriginalAllocations(existingReceipt.allocations || {});
+      } else {
+        Swal.fire('Error', 'Receipt not found', 'error');
+        navigate('/reports/all-receipts');
+      }
+    } else {
+      // Auto-generate Voucher No starting from 000
+      const nextVoucher = savedReceipts.length.toString().padStart(3, '0');
+      setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
+    }
+  }, [id, navigate]);
+
+  // Calculate total pending amount for selected customer
+  const totalPendingAmount = React.useMemo(() => {
+    if (!formData.customerName) return 0;
+    const customerBills = bills.filter(b => b.customer?.name === formData.customerName);
+    
+    let totalPending = 0;
+    customerBills.forEach(b => {
+      const total = parseFloat(b.totals?.amount || 0);
+      const originalAlloc = originalAllocations[b.id] || 0;
+      const actualPaidExcludingThisReceipt = parseFloat(b.amountPaid || 0) - originalAlloc;
+      
+      const balance = total - actualPaidExcludingThisReceipt;
+      if (balance > 0) {
+        totalPending += balance;
+      }
+    });
+    return totalPending;
+  }, [formData.customerName, bills, originalAllocations]);
 
   // Global Ctrl+S
   useEffect(() => {
@@ -90,7 +143,7 @@ export default function ReceiptPage() {
   const selectCustomer = (client) => {
     setFormData(prev => ({ ...prev, customerName: client.ledgerName }));
     setShowClientDropdown(false);
-    setTimeout(() => amountInputRef.current?.focus(), 100);
+    setTimeout(() => billInputRef.current?.focus(), 100);
   };
 
   const handleCustomerKeyDown = (e) => {
@@ -98,6 +151,45 @@ export default function ReceiptPage() {
       e.preventDefault();
       if (showClientDropdown && filteredClients.length > 0) {
         selectCustomer(filteredClients[0]);
+      } else {
+        billInputRef.current?.focus();
+      }
+    }
+  };
+
+  // Bill Autocomplete logic
+  const handleBillChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, billNo: value }));
+    
+    if (value.trim()) {
+      let filtered = bills;
+      if (formData.customerName) {
+         filtered = bills.filter(b => b.customer?.name === formData.customerName);
+      }
+      filtered = filtered.filter(b => b.billInfo?.billNo?.toLowerCase().includes(value.toLowerCase()));
+      setFilteredBillsList(filtered);
+      setShowBillDropdown(true);
+    } else {
+      setShowBillDropdown(false);
+    }
+  };
+
+  const selectBill = (bill) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      billNo: bill.billInfo?.billNo,
+      ...( !prev.customerName && bill.customer?.name ? { customerName: bill.customer.name } : {} )
+    }));
+    setShowBillDropdown(false);
+    setTimeout(() => amountInputRef.current?.focus(), 100);
+  };
+
+  const handleBillKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (showBillDropdown && filteredBillsList.length > 0) {
+        selectBill(filteredBillsList[0]);
       } else {
         amountInputRef.current?.focus();
       }
@@ -124,10 +216,15 @@ export default function ReceiptPage() {
       
       const unpaid = customerBills.map(b => {
         const total = parseFloat(b.totals?.amount || 0);
-        const paid = parseFloat(b.amountPaid || 0);
-        const balance = total - paid;
-        return { ...b, balance, total, paid };
-      }).filter(b => b.balance > 0);
+        
+        // If we are in edit mode, the 'amountPaid' currently includes our ORIGINAL allocation.
+        // We should temporarily subtract the original allocation so the user can re-allocate the full pending amount.
+        const originalAlloc = originalAllocations[b.id] || 0;
+        const actualPaidExcludingThisReceipt = parseFloat(b.amountPaid || 0) - originalAlloc;
+        
+        const balance = total - actualPaidExcludingThisReceipt;
+        return { ...b, balance, total, paid: actualPaidExcludingThisReceipt };
+      }).filter(b => b.balance > 0 || allocatedBills[b.id]); // also include if currently allocated
 
       if (unpaid.length === 0) {
         Swal.fire('Info', 'No unpaid bills found for this customer.', 'info');
@@ -223,64 +320,93 @@ export default function ReceiptPage() {
   const saveReceipt = () => {
     const newReceipt = {
       ...formData,
-      id: Date.now(),
+      id: isEditMode ? Number(id) : Date.now(),
       allocations: allocatedBills
     };
 
-    // Save Receipt
     const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    savedReceipts.push(newReceipt);
-    localStorage.setItem('receipts', JSON.stringify(savedReceipts));
+    let updatedReceipts = [];
+
+    if (isEditMode) {
+      updatedReceipts = savedReceipts.map(r => r.id.toString() === id ? newReceipt : r);
+    } else {
+      updatedReceipts = [...savedReceipts, newReceipt];
+    }
+    
+    localStorage.setItem('receipts', JSON.stringify(updatedReceipts));
 
     // Update Bills
     const updatedBills = bills.map(bill => {
-      if (allocatedBills[bill.id]) {
-        return {
-          ...bill,
-          amountPaid: (parseFloat(bill.amountPaid || 0) + allocatedBills[bill.id]).toFixed(2)
-        };
+      let currentPaid = parseFloat(bill.amountPaid || 0);
+      
+      // If edit mode, FIRST subtract the original allocation
+      if (isEditMode && originalAllocations[bill.id]) {
+        currentPaid -= originalAllocations[bill.id];
       }
-      return bill;
+      
+      // THEN add the new allocation
+      if (allocatedBills[bill.id]) {
+        currentPaid += allocatedBills[bill.id];
+      }
+      
+      return {
+        ...bill,
+        amountPaid: currentPaid.toFixed(2)
+      };
     });
+    
     localStorage.setItem('bills', JSON.stringify(updatedBills));
     setBills(updatedBills); // update local state
+    setOriginalAllocations(allocatedBills); // reset original to current just in case
 
     setLastSavedReceipt(newReceipt);
 
     Swal.fire({
       title: 'Success',
-      text: 'Receipt saved successfully! Do you want to print it?',
+      text: isEditMode ? 'Receipt updated successfully!' : 'Receipt saved successfully! Do you want to print it?',
       icon: 'success',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Print',
+      showCancelButton: !isEditMode,
+      confirmButtonText: isEditMode ? 'OK' : 'Yes, Print',
       cancelButtonText: 'No'
     }).then((result) => {
-      if (result.isConfirmed) {
+      if (!isEditMode && result.isConfirmed) {
         setTimeout(handlePrint, 500); // Wait for state update to trigger render
       }
       
-      // Reset Form
-      const nextVoucher = savedReceipts.length.toString().padStart(3, '0');
-      setFormData({
-        voucherNo: nextVoucher,
-        date: new Date().toISOString().split('T')[0],
-        accountName: 'CASH',
-        customerName: '',
-        amount: '',
-        shortage: '',
-        narrationSno: '',
-        narrationPg: '',
-        narrationDate: ''
-      });
-      setAllocatedBills({});
+      if (isEditMode) {
+        navigate('/reports/all-receipts');
+      } else {
+        // Reset Form
+        const nextVoucher = updatedReceipts.length.toString().padStart(3, '0');
+        setFormData({
+          voucherNo: nextVoucher,
+          date: new Date().toISOString().split('T')[0],
+          accountName: 'CASH',
+          customerName: '',
+          billNo: '',
+          amount: '',
+          shortage: '',
+          narrationSno: '',
+          narrationPg: '',
+          narrationDate: ''
+        });
+        setAllocatedBills({});
+      }
     });
   };
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white uppercase">Receipt Voucher</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Create payment receipts and allocate amounts to unpaid bills.</p>
+      <div className="mb-6 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white uppercase">{isEditMode ? 'Edit Receipt' : 'Receipt Voucher'}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{isEditMode ? 'Modify existing payment receipt' : 'Create payment receipts and allocate amounts to unpaid bills.'}</p>
+        </div>
+        {isEditMode && (
+          <button onClick={() => navigate('/reports/all-receipts')} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-md font-semibold text-slate-700 dark:text-slate-200 transition-colors">
+            Back to All
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm">
@@ -336,7 +462,39 @@ export default function ReceiptPage() {
                       onClick={() => selectCustomer(client)}
                       className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm text-slate-700 dark:text-slate-200"
                     >
-                      {client.ledgerName} {client.mobileNo && `(${client.mobileNo})`}
+                      <div className="flex flex-col">
+                        <span className="font-medium">{client.ledgerName} {client.mobileNo && `(${client.mobileNo})`}</span>
+                        {client.address && <span className="text-xs text-slate-500 opacity-80 truncate">{client.address}{client.city ? `, ${client.city}` : ''}</span>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Bill No */}
+            <div className="flex flex-col gap-1.5 relative md:col-span-2">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bill No</label>
+              <input 
+                type="text"
+                ref={billInputRef}
+                value={formData.billNo}
+                onChange={handleBillChange}
+                onKeyDown={handleBillKeyDown}
+                onFocus={() => { if(filteredBillsList.length > 0) setShowBillDropdown(true); }}
+                onBlur={() => setTimeout(() => setShowBillDropdown(false), 200)}
+                placeholder="Search Bill No..."
+                className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+              />
+              {showBillDropdown && filteredBillsList.length > 0 && (
+                <ul className="absolute z-10 w-full top-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-600 rounded-md shadow-lg max-h-48 overflow-auto">
+                  {filteredBillsList.map((bill, idx) => (
+                    <li 
+                      key={idx} 
+                      onClick={() => selectBill(bill)}
+                      className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm text-slate-700 dark:text-slate-200"
+                    >
+                      {bill.billInfo?.billNo} {bill.customer?.name && `- ${bill.customer.name}`} (₹{bill.totals?.amount || 0})
                     </li>
                   ))}
                 </ul>
@@ -416,14 +574,21 @@ export default function ReceiptPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="p-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-4 bg-slate-50 dark:bg-[#1a1a2e] rounded-b-lg">
+        <div className="p-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 bg-slate-50 dark:bg-[#1a1a2e] rounded-b-lg">
+          <div>
+            {formData.customerName && totalPendingAmount > 0 && (
+              <div className="text-red-600 dark:text-red-400 font-bold text-lg animate-in fade-in slide-in-from-left-2">
+                Total Pending: ₹{totalPendingAmount.toFixed(2)}
+              </div>
+            )}
+          </div>
           <button 
             type="submit" 
             id="receiptSubmitBtn"
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-10 py-3 rounded-md font-medium transition-colors cursor-pointer border-none shadow-md"
           >
             <Save size={18} />
-            Save Receipt (Ctrl+S)
+            {isEditMode ? 'Update Receipt' : 'Save Receipt (Ctrl+S)'}
           </button>
         </div>
       </form>

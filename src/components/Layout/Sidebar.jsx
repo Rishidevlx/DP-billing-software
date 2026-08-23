@@ -13,7 +13,9 @@ import {
   ChevronDown,
   ChevronRight,
   Truck,
-  Package
+  Package,
+  PieChart,
+  Printer
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
@@ -24,12 +26,13 @@ const menuItems = [
     path: '/dashboard',
   },
   {
-    title: 'Bill',
+    title: 'Bills',
     icon: <Receipt size={20} />,
     subItems: [
-      { title: 'All Bills', path: '/bill/all', icon: <FileText size={16} /> },
       { title: 'Create Bill', path: '/bill/create', icon: <FilePlus size={16} /> },
-      { title: 'LR Details', path: '/bill/lr', icon: <Receipt size={16} /> },
+      { title: 'All Bills', path: '/bill/all', icon: <FileText size={16} /> },
+      { title: 'Bill Print/Report', path: '/bill/report', icon: <Printer size={16} /> },
+      { title: 'LR Details', path: '/bill/lr', icon: <Truck size={16} /> },
       { title: 'Create Return', path: '/returns/create', icon: <FilePlus size={16} /> },
       { title: 'All Returns', path: '/returns/all', icon: <FileText size={16} /> },
     ]
@@ -51,9 +54,12 @@ const menuItems = [
     ]
   },
   {
-    title: 'Inventory',
+    title: 'Stocks',
     icon: <Package size={20} />,
-    path: '/inventory'
+    subItems: [
+      { title: 'All Stocks', path: '/stocks/all', icon: <Package size={16} /> },
+      { title: 'Stock Entry', path: '/stocks/entry', icon: <FilePlus size={16} /> },
+    ]
   },
   {
     title: 'Transport',
@@ -61,11 +67,25 @@ const menuItems = [
     path: '/transport',
   },
   {
+    title: 'Customer Report',
+    icon: <Users size={20} />,
+    subItems: [
+      { title: 'Customer List With Address', path: '/customer/list', icon: <FileText size={16} /> },
+      { title: 'Customer Wise Report', path: '/customer/wise-report', icon: <FileText size={16} /> },
+    ]
+  },
+  {
     title: 'Reports',
     icon: <BarChart2 size={20} />,
     subItems: [
-      { title: 'Customer Receipt', path: '/reports/receipt', icon: <Receipt size={16} /> },
-      { title: 'Ledger Report', path: '/reports/ledger', icon: <FileText size={16} /> },
+      { title: 'Dashboard', path: '/reports', icon: <FileText size={16} /> },
+      { title: 'Daily Transaction Report', path: '/reports/daily-transaction', icon: <FileText size={16} /> },
+      { title: 'Overall Transaction Report', path: '/reports/overall-transaction', icon: <FileText size={16} /> },
+      { title: 'Ledger Statement', path: '/reports/ledger', icon: <FileText size={16} /> },
+      { title: 'Ledger Group Summary', path: '/reports/ledger-group', icon: <FileText size={16} /> },
+      { title: 'Payment Pending', path: '/reports/payment-pending', icon: <FileText size={16} /> },
+      { title: 'Receipts', path: '/reports/receipts', icon: <FileText size={16} /> },
+      { title: 'All Receipts', path: '/reports/all-receipts', icon: <Receipt size={16} /> },
     ]
   },
   {
@@ -75,6 +95,7 @@ const menuItems = [
       { title: 'Business Settings', path: '/settings/business', icon: <Settings size={16} /> },
       { title: 'Invoice Settings', path: '/settings/invoice', icon: <FileText size={16} /> },
       { title: 'Tax / GST Settings', path: '/settings/tax', icon: <Receipt size={16} /> },
+      { title: 'E-Invoice API', path: '/settings/einvoice', icon: <FileText size={16} /> },
     ]
   },
   {

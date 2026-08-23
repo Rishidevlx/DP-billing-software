@@ -70,7 +70,8 @@ export default function CreateReturn() {
     date: new Date().toLocaleDateString('en-GB'),
     originalBillNo: '',
     transport: 'RETURNED BY HAND',
-    reason: 'STOCK RETURN'
+    reason: 'STOCK RETURN',
+    priceType: 'mrp'
   });
 
   const [customer, setCustomer] = useState({
@@ -136,22 +137,36 @@ export default function CreateReturn() {
       totals
     };
     
-    // Process Inventory Updates (only on create for now)
-    if (!isEditMode) {
-      const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
-      const updatedBooks = currentBooks.map(book => {
-        const returnedItem = validItems.find(i => i.itemName.toLowerCase() === book.itemName.toLowerCase());
-        if (returnedItem && returnedItem.qty) {
-          const addedStock = parseFloat(returnedItem.qty);
-          const oldStock = parseFloat(book.currentStock || 0);
-          return { ...book, currentStock: oldStock + addedStock };
-        }
-        return book;
-      });
-      localStorage.setItem('books', JSON.stringify(updatedBooks));
+    // --- STOCK MANAGEMENT START ---
+    const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
+    
+    if (isEditMode) {
+      const originalReturn = parsedReturns.find(b => b.id.toString() === id);
+      if (originalReturn && originalReturn.items) {
+        // Revert previous returned quantities (deduct them back from stock)
+        originalReturn.items.forEach(oldItem => {
+          if (!oldItem.itemName) return;
+          const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
+          if (bookIndex !== -1) {
+            currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) - (parseFloat(oldItem.qty) || 0);
+          }
+        });
+      }
+    }
+
+    // Add new returned quantities to stock
+    validItems.forEach(newItem => {
+      const bookIndex = currentBooks.findIndex(b => b.itemCode === newItem.itemCode && b.itemName === newItem.itemName);
+      if (bookIndex !== -1) {
+        currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) + (parseFloat(newItem.qty) || 0);
+      }
+    });
+
+    localStorage.setItem('books', JSON.stringify(currentBooks));
+    // --- STOCK MANAGEMENT END ---
 
       // Mute Original Bill amounts if linked
-      if (returnInfo.originalBillNo) {
+      if (returnInfo.originalBillNo && !isEditMode) { // Original logic only muted on create, not edit to avoid double deducting. Let's keep that constraint.
         const currentBills = JSON.parse(localStorage.getItem('bills') || '[]');
         const billIndex = currentBills.findIndex(b => b.billInfo.billNo === returnInfo.originalBillNo);
         if (billIndex !== -1) {
@@ -179,7 +194,6 @@ export default function CreateReturn() {
           localStorage.setItem('bills', JSON.stringify(currentBills));
         }
       }
-    }
 
     if (isEditMode) {
       const updatedReturns = parsedReturns.map(b => b.id.toString() === id ? newReturn : b);
@@ -268,7 +282,16 @@ export default function CreateReturn() {
     newItems[index].itemName = book.itemName || '';
     newItems[index].itemCode = book.itemCode || '';
     newItems[index].hsnCode = book.hsnCode || '';
-    const rate = parseFloat(book.mrp) || parseFloat(book.splPrice1) || 0;
+    
+    // Determine rate based on selected Price Type
+    let rate = parseFloat(book.mrp) || 0;
+    const pt = returnInfo.priceType || 'mrp';
+    if (pt === 'agent' && book.splPrice1) rate = parseFloat(book.splPrice1);
+    else if (pt === 'school' && book.splPrice2) rate = parseFloat(book.splPrice2);
+    else if (pt === 'customer' && book.splPrice3) rate = parseFloat(book.splPrice3);
+    // fallback to MRP if the selected spl price is 0 or empty, or if MRP is selected
+    if (!rate && parseFloat(book.mrp)) rate = parseFloat(book.mrp);
+
     newItems[index].rate = rate.toFixed(2);
     const qty = parseFloat(newItems[index].qty) || 0;
     if (qty) newItems[index].amount = (rate * qty).toFixed(2);
@@ -391,8 +414,11 @@ export default function CreateReturn() {
                       {filteredClientsByMobile.map((c, i) => (
                         <li key={i} onClick={() => { setCustomer(c); setActiveSearchField(null); document.getElementById('clientName').focus(); }}
                             className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}>
-                          {c.mobile} - {c.name}
-                        </li>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{c.mobile} - {c.name}</span>
+                                {c.address && <span className="text-xs text-slate-500 opacity-80 truncate">{c.address}{c.city ? `, ${c.city}` : ''}</span>}
+                              </div>
+                            </li>
                       ))}
                     </div>
                   )}
@@ -412,8 +438,11 @@ export default function CreateReturn() {
                       {filteredClientsByName.map((c, i) => (
                         <li key={i} onClick={() => { setCustomer(c); setActiveSearchField(null); document.getElementById('originalBillNo').focus(); }}
                             className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}>
-                          {c.name}
-                        </li>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{c.name}</span>
+                                {c.address && <span className="text-xs text-slate-500 opacity-80 truncate">{c.address}{c.city ? `, ${c.city}` : ''}</span>}
+                              </div>
+                            </li>
                       ))}
                     </div>
                   )}
@@ -427,6 +456,20 @@ export default function CreateReturn() {
                 {customer.phone && <p>Phone: {customer.phone}</p>}
               </div>
             )}
+
+            <div className="mt-2 flex flex-col gap-1">
+              <label className="text-xs font-semibold text-slate-500">Apply Price Type</label>
+              <select 
+                value={returnInfo.priceType || 'mrp'}
+                onChange={(e) => setReturnInfo(prev => ({ ...prev, priceType: e.target.value }))}
+                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+              >
+                <option value="mrp">MRP</option>
+                <option value="agent">Agent Price</option>
+                <option value="school">School Price</option>
+                <option value="customer">Customer Price</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -489,7 +532,7 @@ export default function CreateReturn() {
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <th className="p-2 w-12 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">S.No</th>
-                <th className="p-2 w-28 text-xs font-semibold text-slate-600 dark:text-slate-400">Item Code</th>
+                <th className="p-2 w-28 text-xs font-semibold text-slate-600 dark:text-slate-400">Alias</th>
                 <th className="p-2 text-xs font-semibold text-slate-600 dark:text-slate-400">Returned Item Name</th>
                 <th className="p-2 w-24 text-right text-xs font-semibold text-slate-600 dark:text-slate-400">Rate</th>
                 <th className="p-2 w-24 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">Return Qty</th>
@@ -509,7 +552,13 @@ export default function CreateReturn() {
                         {activeRowIndex === index && (
                           <div className="absolute z-50 top-full left-0 w-[400px] mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                             {filteredBooks.map((book, bIndex) => (
-                              <li key={book.id} onClick={() => { handleItemSelection(index, book); setActiveRowIndex(null); document.getElementById(`item-${index}-rate`)?.focus(); }} className={`px-3 py-2 cursor-pointer text-sm flex justify-between ${activeOptionIndex === bIndex ? 'bg-blue-50' : 'hover:bg-slate-50'}`}><span>{book.itemName}</span></li>
+                              <li key={book.id} onClick={() => { handleItemSelection(index, book); setActiveRowIndex(null); document.getElementById(`item-${index}-rate`)?.focus(); }} className={`px-3 py-2 cursor-pointer text-sm flex justify-between items-center ${activeOptionIndex === bIndex ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                                <span>{book.itemName}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-blue-500 font-semibold bg-blue-50 px-2 py-0.5 rounded">Stock: {book.currentStock || 0}</span>
+                                  <span className="text-xs text-slate-400">₹{(parseFloat(book.mrp) || 0).toFixed(2)}</span>
+                                </div>
+                              </li>
                             ))}
                           </div>
                         )}

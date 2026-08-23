@@ -10,7 +10,13 @@ export default function AllBills() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [selectedBill, setSelectedBill] = useState(null);
+  const printRef = useRef();
   const navigate = useNavigate();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Invoice_${selectedBill?.billInfo?.billNo || 'Preview'}`,
+  });
 
   const handleRowAction = (bill) => {
     navigate(`/bill/edit/${bill.id}`);
@@ -19,7 +25,7 @@ export default function AllBills() {
   useEffect(() => {
     const savedBills = localStorage.getItem('bills');
     if (savedBills) {
-      setBills(JSON.parse(savedBills).reverse()); // newest first
+      setBills(JSON.parse(savedBills)); // Ascending order (1, 2, 3...)
     }
   }, []);
 
@@ -36,9 +42,24 @@ export default function AllBills() {
       if (result.isConfirmed) {
         const updatedBills = bills.filter(b => b.id !== id);
         setBills(updatedBills);
-        localStorage.setItem('bills', JSON.stringify(updatedBills.slice().reverse())); // save back in chronological order if needed, but easier to just save what's there? Wait, the state is reversed. Let's just filter localStorage.
         
         const rawSaved = JSON.parse(localStorage.getItem('bills') || '[]');
+        const billToDelete = rawSaved.find(b => b.id === id);
+        
+        // --- STOCK MANAGEMENT START ---
+        if (billToDelete && billToDelete.items) {
+          const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
+          billToDelete.items.forEach(oldItem => {
+            if (!oldItem.itemName) return;
+            const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
+            if (bookIndex !== -1) {
+              currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) + (parseFloat(oldItem.qty) || 0);
+            }
+          });
+          localStorage.setItem('books', JSON.stringify(currentBooks));
+        }
+        // --- STOCK MANAGEMENT END ---
+
         const newRaw = rawSaved.filter(b => b.id !== id);
         localStorage.setItem('bills', JSON.stringify(newRaw));
         
@@ -107,7 +128,21 @@ export default function AllBills() {
                     <td className="p-3 text-sm font-bold text-slate-800 dark:text-white text-right">₹{parseFloat(bill.totals?.amount || 0).toFixed(2)}</td>
                     <td className="p-3 text-center flex justify-center gap-2">
                       <button 
-                        onClick={() => handleDelete(bill.id)}
+                        onClick={(e) => { e.stopPropagation(); setSelectedBill(bill); }}
+                        className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 p-1.5 rounded transition-colors"
+                        title="View Bill"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); navigate(`/bill/edit/${bill.id}`); }}
+                        className="text-emerald-500 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 p-1.5 rounded transition-colors"
+                        title="Edit Bill"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(bill.id); }}
                         className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 p-1.5 rounded transition-colors"
                         title="Delete Bill"
                       >
@@ -125,6 +160,30 @@ export default function AllBills() {
           </table>
         </div>
       </div>
+
+      {/* View Bill Modal */}
+      {selectedBill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-slate-200 dark:bg-[#151521] w-full max-w-5xl max-h-[90vh] rounded-lg shadow-xl flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-[#1a1a2e]">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">View Bill - {selectedBill.billInfo?.billNo}</h2>
+              <div className="flex gap-2">
+                <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer">
+                  <Printer size={16} /> Print
+                </button>
+                <button onClick={() => setSelectedBill(null)} className="bg-slate-300 hover:bg-slate-400 text-slate-800 px-4 py-1.5 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer">
+                  <X size={16} /> Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-300 dark:bg-slate-800 flex justify-center">
+              <div className="bg-white shadow-xl">
+                 <PrintInvoice ref={printRef} billData={selectedBill} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

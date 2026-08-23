@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import Login from './Login';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -6,19 +7,112 @@ import AddBook from './pages/Books/AddBook';
 import BooksDetails from './pages/Books/BooksDetails';
 import AddClient from './pages/Clients/AddClient';
 import ClientsDetails from './pages/Clients/ClientsDetails';
+import BillReport from './pages/Bill/BillReport';
+import PrintInvoice from './pages/Bill/PrintInvoice';
 import CreateBill from './pages/Bill/CreateBill';
 import AllBills from './pages/Bill/AllBills';
 import LRDetails from './pages/Bill/LRDetails';
 import CreateReturn from './pages/Returns/CreateReturn';
 import AllReturns from './pages/Returns/AllReturns';
-import Inventory from './pages/Inventory/Inventory';
+
+import StockEntry from './pages/Inventory/StockEntry';
+import AllStocks from './pages/Inventory/AllStocks';
+import StockReport from './pages/Reports/StockReport';
+import PrintLedger from './pages/Reports/PrintLedger';
+import PaymentPendingReport from './pages/Reports/PaymentPendingReport';
 import ReceiptPage from './pages/Reports/ReceiptPage';
+import AllReceipts from './pages/Reports/AllReceipts';
 import LedgerReport from './pages/Reports/LedgerReport';
+import LedgerGroupSummary from './pages/Reports/LedgerGroupSummary';
+import DailyTransactionReport from './pages/Reports/DailyTransactionReport';
+import OverallTransactionReport from './pages/Reports/OverallTransactionReport';
+import ItemReport from './pages/Reports/ItemReport';
+import SaleSummary from './pages/Reports/SaleSummary';
+import ReportsDashboard from './pages/Reports/ReportsDashboard';
+import CustomerReport from './pages/Reports/CustomerReport';
+import CustomerWiseReport from './pages/Reports/CustomerWiseReport';
 import Transports from './pages/Transport/Transports';
+import EInvoiceSettings from './pages/Settings/EInvoiceSettings';
 
 import Guidance from './pages/Guidance/Guidance';
 
+import { booksList } from './seedBooks';
+
 function App() {
+  useEffect(() => {
+    // Seed initial books if not done
+    if (!localStorage.getItem('seededBooks50')) {
+      const existingBooks = JSON.parse(localStorage.getItem('books') || '[]');
+      let maxId = existingBooks.length > 0 ? Math.max(...existingBooks.map(b => parseInt(b.id) || 0)) : Date.now();
+      
+      const newBooks = booksList.map((b, i) => {
+        maxId++;
+        return {
+          ...b,
+          id: maxId,
+          itemCode: String(maxId),
+          rateMethod: 'Qty',
+          tax: 'Exempt',
+          taxSlab: 'Zero',
+          unit: 'NOS',
+          sellingPriceOn: 'Main Unit'
+        };
+      });
+
+      localStorage.setItem('books', JSON.stringify([...existingBooks, ...newBooks]));
+      localStorage.setItem('seededBooks50', 'true');
+    }
+
+    // Alias Migration
+    if (!localStorage.getItem('aliasMigrationDone1')) {
+      const books = JSON.parse(localStorage.getItem('books') || '[]');
+      
+      const generateAlias = (itemName) => {
+        if (!itemName) return '';
+        let alias = '';
+        const lowerName = itemName.toLowerCase();
+        
+        const numMatch = lowerName.match(/\d+/);
+        if (numMatch) {
+          alias += numMatch[0];
+        }
+
+        if (lowerName.includes('english medium') || /\bem\b/.test(lowerName)) {
+          alias += 'em';
+        } else if (lowerName.includes('tamil medium') || /\btm\b/.test(lowerName)) {
+          alias += 'tm';
+        } else if (lowerName.includes('english')) {
+          alias += 'e';
+        } else if (lowerName.includes('tamil') || lowerName.includes('தமிழ்')) {
+          alias += 't';
+        } else if (lowerName.includes('maths') || lowerName.includes('கணிதம்')) {
+          alias += 'm';
+        } else if (lowerName.includes('science') || lowerName.includes('அறிவியல்')) {
+          alias += 's';
+        } else if (lowerName.includes('social') || lowerName.includes('சமூக')) {
+          alias += 'so';
+        } else {
+          const match = lowerName.match(/[a-z]/);
+          if (match) alias += match[0];
+        }
+        
+        return alias || (numMatch ? numMatch[0] : 'bk');
+      };
+
+      const updatedBooks = books.map(b => {
+        // Only generate alias if it looks like a default code (e.g., 'BK001', '123') or is missing
+        // Wait, the user said "ella book laium neeye antha alais aah add panniru" so let's overwrite it
+        return {
+          ...b,
+          itemCode: generateAlias(b.itemName) || b.itemCode
+        };
+      });
+      
+      localStorage.setItem('books', JSON.stringify(updatedBooks));
+      localStorage.setItem('aliasMigrationDone1', 'true');
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -31,6 +125,8 @@ function App() {
           
           {/* Bill Routes */}
           <Route path="bill/all" element={<AllBills />} />
+          <Route path="bill/report" element={<BillReport />} />
+          <Route path="bill/print/:id" element={<PrintInvoice />} />
           <Route path="bill/create" element={<CreateBill />} />
           <Route path="bill/edit/:id" element={<CreateBill />} />
           <Route path="bill/lr" element={<LRDetails />} />
@@ -50,14 +146,32 @@ function App() {
           <Route path="clients/edit/:id" element={<AddClient />} />
           <Route path="clients/details" element={<ClientsDetails />} />
           
-          {/* Other Routes */}
-          <Route path="inventory" element={<Inventory />} />
-          <Route path="transport" element={<Transports />} />
-          <Route path="reports/receipt" element={<ReceiptPage />} />
+          {/* Stocks Routes */}
+          <Route path="stocks/all" element={<AllStocks />} />
+          <Route path="stocks/entry" element={<StockEntry />} />
+          <Route path="reports" element={<ReportsDashboard />} />
           <Route path="reports/ledger" element={<LedgerReport />} />
+          <Route path="reports/ledger-group" element={<LedgerGroupSummary />} />
+          <Route path="reports/daily-transaction" element={<DailyTransactionReport />} />
+          <Route path="reports/overall-transaction" element={<OverallTransactionReport />} />
+          <Route path="stocks/edit/:id" element={<StockEntry />} />
+          <Route path="stocks/report" element={<StockReport />} />
+          <Route path="customer/list" element={<CustomerReport />} />
+          <Route path="customer/wise-report" element={<CustomerWiseReport />} />
+          <Route path="transport" element={<Transports />} />
+          <Route path="reports/receipts" element={<ReceiptPage />} />
+          <Route path="reports/receipts/edit/:id" element={<ReceiptPage />} />
+          <Route path="reports/all-receipts" element={<AllReceipts />} />
+          <Route path="reports/ledger" element={<LedgerReport />} />
+          <Route path="reports/item" element={<ItemReport />} />
+          <Route path="reports/sales-summary" element={<SaleSummary />} />
+          <Route path="reports/dashboard" element={<ReportsDashboard />} />
+          <Route path="reports/payment-pending" element={<PaymentPendingReport />} />
+          <Route path="print-ledger" element={<PrintLedger />} />
           <Route path="settings/business" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Business Settings</div>} />
           <Route path="settings/invoice" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Invoice Settings</div>} />
           <Route path="settings/tax" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Tax Settings</div>} />
+          <Route path="settings/einvoice" element={<EInvoiceSettings />} />
           <Route path="guidance/guide" element={<Guidance />} />
         </Route>
       </Routes>

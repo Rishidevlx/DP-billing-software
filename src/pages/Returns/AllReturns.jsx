@@ -35,6 +35,23 @@ export default function AllReturns() {
         setReturns(updatedReturns);
         
         const rawSaved = JSON.parse(localStorage.getItem('returns') || '[]');
+        const returnToDelete = rawSaved.find(b => b.id === id);
+        
+        // --- STOCK MANAGEMENT START ---
+        if (returnToDelete && returnToDelete.items) {
+          const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
+          returnToDelete.items.forEach(oldItem => {
+            if (!oldItem.itemName) return;
+            const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
+            if (bookIndex !== -1) {
+              // Deduct the returned stock back since the return note is deleted
+              currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) - (parseFloat(oldItem.qty) || 0);
+            }
+          });
+          localStorage.setItem('books', JSON.stringify(currentBooks));
+        }
+        // --- STOCK MANAGEMENT END ---
+
         const newRaw = rawSaved.filter(b => b.id !== id);
         localStorage.setItem('returns', JSON.stringify(newRaw));
         

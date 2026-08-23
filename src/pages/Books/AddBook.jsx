@@ -47,7 +47,6 @@ export default function AddBook() {
   const [formData, setFormData] = useState({
     itemCode: '',
     itemName: '',
-    alias: '',
     group: 'BOOK',
     rateMethod: 'Qty',
     hsnCode: '',
@@ -101,7 +100,6 @@ export default function AddBook() {
     setFormData({
       itemCode: '',
       itemName: '',
-      alias: '',
       group: 'BOOK',
       rateMethod: 'Qty',
       hsnCode: '',
@@ -196,9 +194,8 @@ export default function AddBook() {
             <div>
               <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">Product Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Item Code" name="itemCode" formData={formData} onChange={handleChange} required />
+                <InputField label="Alias" name="itemCode" formData={formData} onChange={handleChange} required />
                 <InputField label="Item Name" name="itemName" formData={formData} onChange={handleChange} required />
-                <InputField label="Alias / Part No" name="alias" formData={formData} onChange={handleChange} />
                 <SelectField label="Group" name="group" options={['BOOK']} formData={formData} onChange={handleChange} />
                 <SelectField label="Rate Method" name="rateMethod" options={['Qty', 'Weight', 'Length']} formData={formData} onChange={handleChange} />
               </div>
@@ -251,9 +248,9 @@ export default function AddBook() {
                 </div>
 
                 <InputField label="Selling Price" name="sellingPrice" formData={formData} onChange={handleChange} />
-                <InputField label="Spl. Price 1" name="splPrice1" formData={formData} onChange={handleChange} />
-                <InputField label="Spl. Price 2" name="splPrice2" formData={formData} onChange={handleChange} />
-                <InputField label="Spl. Price 3" name="splPrice3" formData={formData} onChange={handleChange} />
+                <InputField label="Agent Price" name="splPrice1" formData={formData} onChange={handleChange} />
+                <InputField label="School Price" name="splPrice2" formData={formData} onChange={handleChange} />
+                <InputField label="Customer Price" name="splPrice3" formData={formData} onChange={handleChange} />
                 <InputField label="MRP" name="mrp" formData={formData} onChange={handleChange} />
               </div>
             </div>

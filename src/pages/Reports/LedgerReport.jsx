@@ -12,11 +12,13 @@ export default function LedgerReport() {
   const [cities, setCities] = useState([]);
   const [partyTypes, setPartyTypes] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [acNames, setAcNames] = useState([]);
 
   const [filters, setFilters] = useState({
-    group: 'Customer',
+    group: 'ALL',
     city: 'ALL',
     partyType: 'ALL',
+    acName: 'ALL',
     ledgerName: '',
     fromDate: '',
     toDate: ''
@@ -25,6 +27,7 @@ export default function LedgerReport() {
   const [activeSearchField, setActiveSearchField] = useState(false);
   const [activeClientIndex, setActiveClientIndex] = useState(0);
 
+  const [isLetterFormat, setIsLetterFormat] = useState(false);
   const printRef = useRef();
 
   useEffect(() => {
@@ -38,16 +41,17 @@ export default function LedgerReport() {
     setReceipts(loadedReceipts);
     setReturns(loadedReturns);
 
-    // Extract unique cities, party types, and groups
     const uniqueCities = [...new Set(loadedClients.map(c => c.city).filter(Boolean))];
     const uniquePartyTypes = [...new Set(loadedClients.map(c => c.partyType).filter(Boolean))];
     const uniqueGroups = [...new Set(loadedClients.map(c => c.group).filter(Boolean))];
+    const uniqueAcNames = [...new Set(loadedReceipts.map(r => r.accountName || 'CASH').filter(Boolean))];
     
     if (!uniqueGroups.includes('Customer')) uniqueGroups.push('Customer');
 
     setCities(uniqueCities);
     setPartyTypes(uniquePartyTypes);
     setGroups(uniqueGroups);
+    setAcNames(uniqueAcNames);
   }, []);
 
   const parseDateString = (dateStr) => {
@@ -56,89 +60,197 @@ export default function LedgerReport() {
     if (parts.length === 3) {
       return new Date(parts[2], parts[1] - 1, parts[0]);
     }
+    const isoDate = new Date(dateStr);
+    if (!isNaN(isoDate.getTime())) return isoDate;
     return null;
   };
 
-  // Compute stats for each client
-  const clientsWithStats = clients.map(client => {
-    let clientBills = bills.filter(b => b.customer?.name === client.ledgerName);
-    let clientReceipts = receipts.filter(r => r.customerName === client.ledgerName);
-    let clientReturns = returns.filter(rt => rt.customer?.name === client.ledgerName);
+  const formatDate = (dateObj) => {
+    if (!dateObj) return '';
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const y = String(dateObj.getFullYear()).slice(-2); 
+    return `${d}/${m}/${y}`;
+  };
 
-    if (filters.fromDate) {
-      const fromDateObj = new Date(filters.fromDate);
-      fromDateObj.setHours(0, 0, 0, 0);
-      clientBills = clientBills.filter(b => {
-        const d = parseDateString(b.billInfo?.date);
-        return d ? d >= fromDateObj : true;
-      });
-      clientReceipts = clientReceipts.filter(r => {
-        const d = parseDateString(r.date);
-        return d ? d >= fromDateObj : true;
-      });
-      clientReturns = clientReturns.filter(rt => {
-        const d = parseDateString(rt.returnInfo?.date);
-        return d ? d >= fromDateObj : true;
-      });
-    }
+  let transactions = [];
+  let selectedClient = null;
 
-    if (filters.toDate) {
-      const toDateObj = new Date(filters.toDate);
-      toDateObj.setHours(23, 59, 59, 999);
-      clientBills = clientBills.filter(b => {
-        const d = parseDateString(b.billInfo?.date);
-        return d ? d <= toDateObj : true;
-      });
-      clientReceipts = clientReceipts.filter(r => {
-        const d = parseDateString(r.date);
-        return d ? d <= toDateObj : true;
-      });
-      clientReturns = clientReturns.filter(rt => {
-        const d = parseDateString(rt.returnInfo?.date);
-        return d ? d <= toDateObj : true;
-      });
-    }
+  if (filters.ledgerName) {
+    selectedClient = clients.find(c => c.ledgerName === filters.ledgerName) || { ledgerName: filters.ledgerName };
+  }
 
-    const totalPurchases = clientBills.reduce((sum, b) => sum + (parseFloat(b.totals?.amount) || 0), 0);
-    const totalPaid = clientReceipts.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-    const totalReturns = clientReturns.reduce((sum, rt) => sum + (parseFloat(rt.totals?.amount) || 0), 0);
+  if (selectedClient && selectedClient.ledgerName) {
+    let clientBills = bills.filter(b => b.customer?.name === selectedClient.ledgerName);
+    let clientReceipts = receipts.filter(r => r.customerName === selectedClient.ledgerName);
+    let clientReturns = returns.filter(rt => rt.customer?.name === selectedClient.ledgerName);
+
+    let allTransactions = [];
+
+    clientBills.forEach(b => {
+       allTransactions.push({
+           dateObj: parseDateString(b.billInfo?.date),
+           dateStr: b.billInfo?.date,
+           particulars: 'SALES',
+           acName: '-',
+           vchType: 'Sales',
+           vchNo: b.billInfo?.billNo,
+           debit: parseFloat(b.totals?.amount) || 0,
+           credit: 0,
+           narration: ''
+       });
+    });
+
+    clientReceipts.forEach(r => {
+       let nar = '';
+       if(r.narrationSno || r.narrationPg || r.narrationDate) {
+           nar = `sno ${r.narrationSno || ''} pg ${r.narrationPg || ''} dated ${r.narrationDate || ''}`.trim();
+       }
+       allTransactions.push({
+           dateObj: parseDateString(r.date),
+           dateStr: parseDateString(r.date) ? parseDateString(r.date).toLocaleDateString('en-GB') : r.date,
+           particulars: 'RECEIPT',
+           acName: r.accountName || 'CASH',
+           vchType: 'Receipt',
+           vchNo: r.voucherNo,
+           debit: 0,
+           credit: parseFloat(r.amount) || 0,
+           narration: nar
+       });
+    });
+
+    clientReturns.forEach(rt => {
+       allTransactions.push({
+           dateObj: parseDateString(rt.returnInfo?.date),
+           dateStr: rt.returnInfo?.date,
+           particulars: 'SALES RETURN',
+           acName: '-',
+           vchType: 'Return',
+           vchNo: rt.returnInfo?.returnNo,
+           debit: 0,
+           credit: parseFloat(rt.totals?.amount) || 0,
+           narration: ''
+       });
+    });
+
+    allTransactions.sort((a, b) => {
+        if (!a.dateObj && !b.dateObj) return 0;
+        if (!a.dateObj) return -1;
+        if (!b.dateObj) return 1;
+        return a.dateObj - b.dateObj;
+    });
+
+    let runningBalance = 0; 
+    let openingBalance = 0; 
+
+    let fromDateObj = filters.fromDate ? new Date(filters.fromDate) : null;
+    if(fromDateObj) fromDateObj.setHours(0,0,0,0);
     
-    // balanceDue = totalPurchases - totalPaid because totalPurchases is already net of returns (original bill is modified)
-    const balanceDue = totalPurchases - totalPaid;
+    let toDateObj = filters.toDate ? new Date(filters.toDate) : null;
+    if(toDateObj) toDateObj.setHours(23,59,59,999);
 
-    return {
-      ...client,
-      totalPurchases,
-      totalPaid,
-      totalReturns,
-      balanceDue
-    };
-  });
+    allTransactions.forEach(t => {
+        if (fromDateObj && t.dateObj < fromDateObj) {
+            openingBalance += t.debit - t.credit;
+        } else if ((!fromDateObj || t.dateObj >= fromDateObj) && (!toDateObj || t.dateObj <= toDateObj)) {
+             runningBalance = (transactions.length === 0 ? openingBalance : runningBalance) + t.debit - t.credit;
+             t.closingAmt = Math.abs(runningBalance).toFixed(2);
+             t.closingType = runningBalance >= 0 ? 'Dr' : 'Dr';
+             transactions.push(t);
+        }
+    });
+    
+    if (fromDateObj && transactions.length > 0) {
+       transactions.unshift({
+           dateStr: parseDateString(filters.fromDate).toLocaleDateString('en-GB'),
+           particulars: 'OPENING BALANCE',
+           acName: '-',
+           vchType: '',
+           vchNo: '',
+           debit: openingBalance > 0 ? openingBalance : 0,
+           credit: openingBalance < 0 ? Math.abs(openingBalance) : 0,
+           closingAmt: Math.abs(openingBalance).toFixed(2),
+           closingType: openingBalance >= 0 ? 'Dr' : 'Dr',
+           narration: ''
+       });
+    }
+  } else if (filters.acName && filters.acName !== 'ALL') {
+    // A/C Name Report Mode
+    let allTransactions = [];
+    let matchingReceipts = receipts.filter(r => (r.accountName || 'CASH') === filters.acName);
 
-  // Filter clients based on selections
-  let filteredData = clientsWithStats.filter(c => {
+    matchingReceipts.forEach(r => {
+       let nar = '';
+       if(r.narrationSno || r.narrationPg || r.narrationDate) {
+           nar = `sno ${r.narrationSno || ''} pg ${r.narrationPg || ''} dated ${r.narrationDate || ''}`.trim();
+       }
+       allTransactions.push({
+           dateObj: parseDateString(r.date),
+           dateStr: parseDateString(r.date) ? parseDateString(r.date).toLocaleDateString('en-GB') : r.date,
+           particulars: r.customerName || 'UNKNOWN CUSTOMER', // Show customer name here
+           acName: r.accountName || 'CASH',
+           vchType: 'Receipt',
+           vchNo: r.voucherNo,
+           debit: 0,
+           credit: parseFloat(r.amount) || 0,
+           narration: nar
+       });
+    });
+
+    allTransactions.sort((a, b) => {
+        if (!a.dateObj && !b.dateObj) return 0;
+        if (!a.dateObj) return -1;
+        if (!b.dateObj) return 1;
+        return a.dateObj - b.dateObj;
+    });
+
+    let runningBalance = 0; 
+    let openingBalance = 0; 
+
+    let fromDateObj = filters.fromDate ? new Date(filters.fromDate) : null;
+    if(fromDateObj) fromDateObj.setHours(0,0,0,0);
+    
+    let toDateObj = filters.toDate ? new Date(filters.toDate) : null;
+    if(toDateObj) toDateObj.setHours(23,59,59,999);
+
+    allTransactions.forEach(t => {
+        if (fromDateObj && t.dateObj < fromDateObj) {
+            openingBalance += t.credit;
+        } else if ((!fromDateObj || t.dateObj >= fromDateObj) && (!toDateObj || t.dateObj <= toDateObj)) {
+             runningBalance = (transactions.length === 0 ? openingBalance : runningBalance) + t.credit;
+             t.closingAmt = Math.abs(runningBalance).toFixed(2);
+             t.closingType = 'Dr';
+             transactions.push(t);
+        }
+    });
+    
+    if (fromDateObj && transactions.length > 0) {
+       transactions.unshift({
+           dateStr: parseDateString(filters.fromDate).toLocaleDateString('en-GB'),
+           particulars: 'OPENING BALANCE',
+           acName: '-',
+           vchType: '',
+           vchNo: '',
+           debit: 0,
+           credit: openingBalance,
+           closingAmt: openingBalance.toFixed(2),
+           closingType: 'Dr',
+           narration: ''
+       });
+    }
+    
+    selectedClient = { ledgerName: `A/C Report: ${filters.acName}` };
+  }
+
+  let filteredClients = clients.filter(c => {
     let matches = true;
-    if (filters.group && filters.group !== 'ALL') {
-      matches = matches && (c.group === filters.group);
-    }
-    if (filters.city && filters.city !== 'ALL') {
-      matches = matches && (c.city === filters.city);
-    }
-    if (filters.partyType && filters.partyType !== 'ALL') {
-      matches = matches && (c.partyType === filters.partyType);
-    }
-    // Strict name match if selected from autocomplete, else includes
-    if (filters.ledgerName) {
-      matches = matches && (
-        (c.ledgerName || '').toLowerCase().includes(filters.ledgerName.toLowerCase()) ||
-        (c.mobileNo || '').includes(filters.ledgerName)
-      );
-    }
+    if (filters.group && filters.group !== 'ALL') matches = matches && (c.group === filters.group);
+    if (filters.city && filters.city !== 'ALL') matches = matches && (c.city === filters.city);
+    if (filters.partyType && filters.partyType !== 'ALL') matches = matches && (c.partyType === filters.partyType);
     return matches;
   });
 
-  // Autocomplete matching list
-  const searchResults = clients.filter(c => 
+  const searchResults = filteredClients.filter(c => 
     (c.ledgerName || '').toLowerCase().includes((filters.ledgerName || '').toLowerCase()) ||
     (c.mobileNo || '').includes(filters.ledgerName || '')
   );
@@ -165,7 +277,6 @@ export default function LedgerReport() {
     }
   };
 
-  // Close dropdown if clicked outside
   useEffect(() => {
     const handleClickOutside = () => {
       setActiveSearchField(false);
@@ -176,7 +287,7 @@ export default function LedgerReport() {
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `Ledger_Report_${new Date().toISOString().split('T')[0]}`,
+    documentTitle: `Ledger_Report_${filters.ledgerName || filters.acName}`,
   });
 
   return (
@@ -185,183 +296,214 @@ export default function LedgerReport() {
         <div className="flex items-center gap-3">
           <FileText className="text-blue-500 w-8 h-8" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white uppercase">Ledger Report</h1>
-            <p className="text-slate-500 text-sm">View and print customer ledger summaries and balances.</p>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white uppercase">Ledger Statement</h1>
           </div>
         </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="letterFormat"
+              checked={isLetterFormat}
+              onChange={(e) => setIsLetterFormat(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+            />
+            <label htmlFor="letterFormat" className="text-sm font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+              Letter Format
+            </label>
+          </div>
         <button 
           onClick={handlePrint} 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer"
+          disabled={!filters.ledgerName && filters.acName === 'ALL'}
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer"
         >
-          <Printer size={18} /> Print Report
+          <Printer size={16} />
+          Print Ledger
         </button>
       </div>
+      </div>
 
-      {/* FILTER SECTION */}
-      <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm mb-6 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
-          <div className="flex flex-col gap-1.5 md:col-span-3">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">From Date</label>
-            <input 
-              type="date" 
-              value={filters.fromDate}
-              onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 md:col-span-3">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">To Date</label>
-            <input 
-              type="date" 
-              value={filters.toDate}
-              onChange={(e) => handleFilterChange('toDate', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Group</label>
-            <select 
-              value={filters.group}
-              onChange={(e) => handleFilterChange('group', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
-            >
-              <option value="ALL">ALL</option>
-              {groups.map((g, i) => <option key={i} value={g}>{g}</option>)}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">City</label>
-            <select 
-              value={filters.city}
-              onChange={(e) => handleFilterChange('city', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
-            >
-              <option value="ALL">ALL</option>
-              {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Party Type</label>
-            <select 
-              value={filters.partyType}
-              onChange={(e) => handleFilterChange('partyType', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
-            >
-              <option value="ALL">ALL</option>
-              {partyTypes.map((pt, i) => <option key={i} value={pt}>{pt}</option>)}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5 relative">
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ledger Name / Mobile</label>
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg p-5 mb-6 shadow-sm">
+        <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <Search size={18} className="text-slate-400" /> Filter Options
+        </h3>
+        
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="flex flex-col gap-1.5 md:col-span-3">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">From Date</label>
               <input 
-                type="text" 
-                value={filters.ledgerName}
-                onChange={(e) => handleFilterChange('ledgerName', e.target.value)}
-                onFocus={() => { setActiveSearchField(true); setActiveClientIndex(0); }}
-                onKeyDown={handleKeyDown}
-                placeholder="Search name or number..."
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
+                type="date" 
+                value={filters.fromDate}
+                onChange={(e) => handleFilterChange('fromDate', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
               />
-              <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
-              
-              {activeSearchField && filters.ledgerName && searchResults.length > 0 && (
-                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  <ul className="py-1">
-                    {searchResults.map((c, i) => (
-                      <li 
-                        key={i}
-                        onClick={() => {
-                          handleFilterChange('ledgerName', c.ledgerName);
-                          setActiveSearchField(false);
-                        }}
-                        className={`px-3 py-2 cursor-pointer text-sm ${activeClientIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                      >
-                        {c.ledgerName} {c.mobileNo && `(${c.mobileNo})`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            </div>
+            <div className="flex flex-col gap-1.5 md:col-span-3">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">To Date</label>
+              <input 
+                type="date" 
+                value={filters.toDate}
+                onChange={(e) => handleFilterChange('toDate', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
+              />
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Group</label>
+              <select 
+                value={filters.group}
+                onChange={(e) => handleFilterChange('group', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
+              >
+                <option value="ALL">ALL</option>
+                {groups.map((g, i) => <option key={i} value={g}>{g}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">City</label>
+              <select 
+                value={filters.city}
+                onChange={(e) => handleFilterChange('city', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
+              >
+                <option value="ALL">ALL</option>
+                {cities.map((c, i) => <option key={i} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Party Type</label>
+              <select 
+                value={filters.partyType}
+                onChange={(e) => handleFilterChange('partyType', e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
+              >
+                <option value="ALL">ALL</option>
+                {partyTypes.map((pt, i) => <option key={i} value={pt}>{pt}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">A/C Name</label>
+              <select 
+                value={filters.acName}
+                onChange={(e) => {
+                  handleFilterChange('acName', e.target.value);
+                  if (e.target.value !== 'ALL') handleFilterChange('ledgerName', ''); // Clear ledger when picking A/C
+                }}
+                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 text-sm"
+              >
+                <option value="ALL">ALL</option>
+                {acNames.map((a, i) => <option key={i} value={a}>{a}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5 relative">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ledger Name *</label>
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <input 
+                  type="text" 
+                  value={filters.ledgerName}
+                  onChange={(e) => handleFilterChange('ledgerName', e.target.value)}
+                  onFocus={() => { setActiveSearchField(true); setActiveClientIndex(0); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Select a ledger to view..."
+                  className="w-full pl-9 pr-3 py-2 border border-blue-400 dark:border-blue-500 rounded-md bg-blue-50 dark:bg-blue-900/20 text-slate-900 dark:text-slate-100 text-sm"
+                />
+                <Search size={16} className="absolute left-3 top-2.5 text-blue-500" />
+                
+                {activeSearchField && filters.ledgerName && searchResults.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    <ul className="py-1">
+                      {searchResults.map((c, i) => (
+                        <li 
+                          key={i}
+                          onClick={() => {
+                            handleFilterChange('ledgerName', c.ledgerName);
+                            setActiveSearchField(false);
+                          }}
+                          className={`px-3 py-2 cursor-pointer text-sm ${activeClientIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                        >
+                          {c.ledgerName} {c.mobileNo && `(${c.mobileNo})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
       {/* RESULTS TABLE */}
       <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-100 dark:bg-[#1a1a2e] border-b border-slate-200 dark:border-slate-700">
-                <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">S.No</th>
-                <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Ledger Name</th>
-                <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">City</th>
-                <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Party Type</th>
-                <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Mobile No</th>
-                <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Total Purchases</th>
-                <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Total Returns</th>
-                <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Total Paid</th>
-                <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Balance Due</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.length > 0 ? (
-                filteredData.map((client, index) => (
-                  <tr key={index} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-[#1E1E2D]/50 transition-colors">
-                    <td className="p-3 text-sm text-slate-500">{index + 1}</td>
-                    <td className="p-3 text-sm font-medium text-slate-900 dark:text-white uppercase">{client.ledgerName}</td>
-                    <td className="p-3 text-sm text-slate-700 dark:text-slate-300 uppercase">{client.city || '-'}</td>
-                    <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{client.partyType || '-'}</td>
-                    <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{client.mobileNo || '-'}</td>
-                    <td className="p-3 text-sm text-right font-medium text-blue-600 dark:text-blue-400">₹{client.totalPurchases.toFixed(2)}</td>
-                    <td className="p-3 text-sm text-right font-medium text-orange-500 dark:text-orange-400">₹{client.totalReturns.toFixed(2)}</td>
-                    <td className="p-3 text-sm text-right font-medium text-green-600 dark:text-green-400">₹{client.totalPaid.toFixed(2)}</td>
-                    <td className="p-3 text-sm text-right font-bold text-red-600 dark:text-red-400">₹{client.balanceDue.toFixed(2)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="p-8 text-center text-slate-500 dark:text-slate-400">
-                    No ledger data found matching the filters.
-                  </td>
+        {filters.ledgerName || (filters.acName && filters.acName !== 'ALL') ? (
+            <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+                <thead>
+                <tr className="bg-slate-100 dark:bg-[#1a1a2e] border-b border-slate-200 dark:border-slate-700">
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Date</th>
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Particulars</th>
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">A/C Name</th>
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Vch Type</th>
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Vch No</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Debit</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Credit</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Closing</th>
                 </tr>
-              )}
-            </tbody>
-            {filteredData.length > 0 && (
-              <tfoot>
-                <tr className="bg-slate-50 dark:bg-[#1a1a2e]">
-                  <td colSpan="5" className="p-3 text-right font-bold text-slate-700 dark:text-slate-300">TOTAL:</td>
-                  <td className="p-3 text-right font-bold text-blue-600 dark:text-blue-400 text-base">
-                    ₹{filteredData.reduce((sum, c) => sum + c.totalPurchases, 0).toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-orange-500 dark:text-orange-400 text-base">
-                    ₹{filteredData.reduce((sum, c) => sum + c.totalReturns, 0).toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-green-600 dark:text-green-400 text-base">
-                    ₹{filteredData.reduce((sum, c) => sum + c.totalPaid, 0).toFixed(2)}
-                  </td>
-                  <td className="p-3 text-right font-bold text-red-600 dark:text-red-400 text-base">
-                    ₹{filteredData.reduce((sum, c) => sum + c.balanceDue, 0).toFixed(2)}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                {transactions.length > 0 ? (
+                    transactions.map((t, index) => (
+                    <tr key={index} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-[#1E1E2D]/50 transition-colors">
+                        <td className="p-3 text-sm text-slate-500 whitespace-nowrap">{t.dateStr}</td>
+                        <td className="p-3 text-sm font-medium text-slate-900 dark:text-white uppercase">
+                            {t.particulars}
+                            {t.narration && (
+                                <div className="text-xs text-slate-500 dark:text-slate-400 font-normal italic mt-0.5 whitespace-pre-wrap">{t.narration}</div>
+                            )}
+                        </td>
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300 font-semibold">{t.acName}</td>
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{t.vchType}</td>
+                        <td className="p-3 text-sm text-slate-700 dark:text-slate-300">{t.vchNo}</td>
+                        <td className="p-3 text-sm text-right font-medium text-slate-700 dark:text-slate-300">
+                            {t.debit ? t.debit.toFixed(2) : ''}
+                        </td>
+                        <td className="p-3 text-sm text-right font-medium text-slate-700 dark:text-slate-300">
+                            {t.credit ? t.credit.toFixed(2) : ''}
+                        </td>
+                        <td className="p-3 text-sm text-right font-bold text-slate-900 dark:text-white">
+                            {t.closingAmt} <span className="text-xs font-normal text-slate-500">{t.closingType}</span>
+                        </td>
+                    </tr>
+                    ))
+                ) : (
+                    <tr>
+                    <td colSpan="7" className="p-8 text-center text-slate-500 dark:text-slate-400">
+                        No transactions found for this ledger in the selected period.
+                    </td>
+                    </tr>
+                )}
+                </tbody>
+            </table>
+            </div>
+        ) : (
+            <div className="p-12 flex flex-col items-center justify-center text-center">
+                <Search size={48} className="text-slate-300 dark:text-slate-600 mb-4" />
+                <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Select a Ledger or A/C Name</h3>
+                <p className="text-slate-500 text-sm mt-1 max-w-sm">Please search and select a Ledger Name or A/C Name from the filters above to view the detailed voucher statement.</p>
+            </div>
+        )}
       </div>
 
-      {/* Hidden Print Component */}
       <div className="hidden">
-        <PrintLedger ref={printRef} data={filteredData} filters={filters} />
+        <PrintLedger ref={printRef} data={transactions} filters={filters} selectedClient={selectedClient} isLetterFormat={isLetterFormat} />
       </div>
 
     </div>

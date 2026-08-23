@@ -13,10 +13,21 @@ export default function BooksDetails() {
   const [allBooks, setAllBooks] = useState([]);
   const [filteredBooks, setFilteredBooks] = useState([]);
 
+  const extractNumber = (name) => {
+    if (!name) return Infinity;
+    const match = name.match(/\d+/);
+    return match ? parseInt(match[0], 10) : Infinity;
+  };
+
+  const sortBooks = (books) => {
+    return [...books].sort((a, b) => extractNumber(a.itemName) - extractNumber(b.itemName));
+  };
+
   useEffect(() => {
     const storedBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    setAllBooks(storedBooks);
-    setFilteredBooks(storedBooks);
+    const sortedBooks = sortBooks(storedBooks);
+    setAllBooks(sortedBooks);
+    setFilteredBooks(sortedBooks);
   }, []);
 
   const handleEdit = (id) => {
@@ -38,7 +49,7 @@ export default function BooksDetails() {
       result = result.filter(book => book.group === groupFilter);
     }
 
-    setFilteredBooks(result);
+    setFilteredBooks(sortBooks(result));
   };
 
   const handleResetFilters = () => {
@@ -121,10 +132,11 @@ export default function BooksDetails() {
             <thead>
               <tr className="bg-slate-50 dark:bg-[#1a1a2e] border-b border-slate-200 dark:border-slate-800">
                 <th className="p-4 w-12"><input type="checkbox" className="rounded border-slate-300" /></th>
-                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Item Code</th>
+                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Alias</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Item Name</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Group</th>
-                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Alias</th>
+                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">COV</th>
+                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Unit</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Stocks</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Selling Price</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
@@ -143,7 +155,8 @@ export default function BooksDetails() {
                   <td className="p-4 text-sm font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">{book.itemCode}</td>
                   <td className="p-4 text-sm text-slate-700 dark:text-slate-200">{book.itemName}</td>
                   <td className="p-4 text-sm text-slate-600 dark:text-slate-400">{book.group}</td>
-                  <td className="p-4 text-sm text-slate-600 dark:text-slate-400">{book.alias || '-'}</td>
+                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.convQty || '-'}</td>
+                  <td className="p-4 text-sm text-slate-600 dark:text-slate-400 text-center">{book.unit || '-'}</td>
                   <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.currentStock || '0'}</td>
                   <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-right">₹ {book.sellingPrice || '0.00'}</td>
                   <td className="p-4 flex items-center justify-end gap-3">

@@ -1,13 +1,117 @@
 import React, { forwardRef } from 'react';
 
-const PrintLedger = forwardRef(({ data, filters }, ref) => {
-  if (!data) return null;
+const PrintLedger = forwardRef(({ data, filters, selectedClient, isLetterFormat }, ref) => {
+  if (!data || data.length === 0 || !selectedClient) return null;
 
-  const totalPurchases = data.reduce((sum, c) => sum + c.totalPurchases, 0);
-  const totalReturns = data.reduce((sum, c) => sum + c.totalReturns, 0);
-  const totalPaid = data.reduce((sum, c) => sum + c.totalPaid, 0);
-  const totalBalance = data.reduce((sum, c) => sum + c.balanceDue, 0);
+  if (isLetterFormat) {
+    return (
+      <div ref={ref} className="p-10 bg-white text-black font-serif mx-auto text-sm" style={{ width: '210mm', minHeight: '297mm' }}>
+        <style>{`
+          @media print {
+            @page { margin: 15mm; size: A4 portrait; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-break { page-break-inside: avoid; }
+          }
+        `}</style>
 
+        {/* Header matching image exactly */}
+        <div className="text-center mb-6">
+          <h1 className="font-bold text-3xl mb-1 tracking-widest text-[#1e3a8a]" style={{ fontFamily: 'Arial, sans-serif' }}>DOLPHIN PUBLICATIONS</h1>
+          <p className="font-semibold text-base mb-4">Cell No : 98653-06197, 89256-77710</p>
+          <div className="border-b-[3px] border-black mb-6"></div>
+        </div>
+
+        {/* To Address Block */}
+        <div className="mb-8">
+          <p className="font-bold uppercase text-base">THE HEAD MISTRESS,</p>
+          <p className="font-bold uppercase text-base">{selectedClient.ledgerName}</p>
+          {selectedClient.address && <p className="font-bold uppercase text-base">{selectedClient.address}</p>}
+          <p className="font-bold uppercase text-base">{selectedClient.city}</p>
+          {selectedClient.district && <p className="font-bold uppercase text-base">{selectedClient.district}</p>}
+          <p className="font-bold mt-1 text-base">
+            {selectedClient.phoneNo ? `Phone No : ${selectedClient.phoneNo}` : ''}
+            {selectedClient.phoneNo && selectedClient.mobileNo ? '  ' : ''}
+            {selectedClient.mobileNo ? `Mobile No : ${selectedClient.mobileNo}` : ''}
+          </p>
+          
+          <p className="font-bold mt-1 text-base text-blue-800">
+            {filters.fromDate || filters.toDate ? (
+               `Ledger for the Period of ${filters.fromDate ? new Date(filters.fromDate).toLocaleDateString('en-GB') : ''} - ${filters.toDate ? new Date(filters.toDate).toLocaleDateString('en-GB') : ''}`
+            ) : (
+               `Ledger Report`
+            )}
+          </p>
+        </div>
+
+        {/* Salutation & Opening Paragraph */}
+        <div className="mb-6">
+          <p className="font-bold text-base mb-3">Respected Sir / Madam,</p>
+          <p className="text-base text-justify leading-relaxed">
+            We convey own salutations and thankfulness for having kindly purchased our English Guide & Work Book. The details of your having purchased our Guide & Work Book are given below :
+          </p>
+        </div>
+
+        {/* Table - Letter Format (Removed A/C Name) */}
+        <div className="mb-6">
+          <table className="w-full text-left border-collapse border border-black text-sm">
+            <thead>
+              <tr className="bg-slate-100 border-b-2 border-black">
+                <th className="border border-black p-2 font-bold text-center w-24">Date</th>
+                <th className="border border-black p-2 font-bold text-center">Particulars</th>
+                <th className="border border-black p-2 font-bold text-center w-28">Vch. Type</th>
+                <th className="border border-black p-2 font-bold text-center w-20">Vch No</th>
+                <th className="border border-black p-2 font-bold text-center w-24">Debit</th>
+                <th className="border border-black p-2 font-bold text-center w-24">Credit</th>
+                <th className="border border-black p-2 font-bold text-center w-28">Closing</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((t, i) => (
+                <tr key={i} className="border-b border-black page-break">
+                  <td className="border-r border-black p-2 text-center align-top font-semibold">{t.dateStr}</td>
+                  <td className="border-r border-black p-2 font-bold uppercase align-top">
+                    {t.particulars}
+                    {t.narration && (
+                       <div className="mt-1 normal-case font-semibold italic text-xs whitespace-pre-wrap">{t.narration}</div>
+                    )}
+                  </td>
+                  <td className="border-r border-black p-2 font-semibold text-center align-top">{t.vchType}</td>
+                  <td className="border-r border-black p-2 font-semibold text-center align-top">{t.vchNo}</td>
+                  <td className="border-r border-black p-2 font-semibold text-right align-top">{t.debit ? t.debit.toFixed(2) : ''}</td>
+                  <td className="border-r border-black p-2 font-semibold text-right align-top">{t.credit ? t.credit.toFixed(2) : ''}</td>
+                  <td className="p-2 font-semibold text-right align-top">{t.closingAmt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer Paragraphs */}
+        <div className="mb-12">
+          <p className="text-base mb-4 font-semibold text-gray-800">
+            Please send us the amount mentioned above early.
+          </p>
+          <p className="text-base font-semibold leading-relaxed text-gray-800 italic">
+            "We Request you to send your Demand Draft in favour of "DOLPHIN PUBLICATIONS" payable at Srivilliputtur at any nationalized bank."
+          </p>
+        </div>
+
+        {/* Signatory */}
+        <div className="flex justify-between items-start mt-20">
+          <div className="font-semibold text-base">
+            Thanking You
+          </div>
+          <div className="text-right font-semibold text-base">
+            <p className="mb-16">For DOLPHIN PUBLICATIONS</p>
+            <p>Proprietor</p>
+          </div>
+        </div>
+
+      </div>
+    );
+  }
+
+  // Normal Layout
   return (
     <div ref={ref} className="p-4 bg-white text-black font-sans w-[210mm] mx-auto text-sm">
       <style>{`
@@ -19,82 +123,61 @@ const PrintLedger = forwardRef(({ data, filters }, ref) => {
       `}</style>
       
       {/* Header */}
-      <div className="text-center pb-4 border-b-2 border-black mb-4">
-        <h1 className="text-2xl font-extrabold uppercase tracking-widest text-[#2a2a2a] mb-1">DOLPHIN PUBLICATIONS</h1>
-        <p className="font-semibold text-xs text-[#333]">239, Keelapatti Street, Srivilliputtur - 626 125. Virudhunagar District</p>
-        <p className="font-semibold text-xs text-[#333]">Mob. No 98653-06197, 89256-77710</p>
-        <h2 className="text-lg font-bold mt-3 border border-black inline-block px-4 py-1 rounded bg-[#d9d9d9]/30">
-          LEDGER REPORT
-        </h2>
+      <div className="text-center mb-6">
+        <h2 className="font-bold uppercase text-lg">THE HEAD MISTRESS,</h2>
+        <h2 className="font-bold uppercase text-lg">{selectedClient.ledgerName}</h2>
+        {selectedClient.address && <p className="font-semibold uppercase">{selectedClient.address}</p>}
+        {selectedClient.city && <p className="font-semibold uppercase">{selectedClient.city} {selectedClient.pincode ? `- ${selectedClient.pincode}` : ''}</p>}
+        <p className="font-semibold uppercase">Virudhunagar District</p>
+        {selectedClient.mobileNo && <p className="font-semibold">Phone No : {selectedClient.mobileNo}</p>}
       </div>
 
-      {/* Filters Summary */}
-      <div className="flex justify-between items-start mb-6 text-xs font-semibold px-2">
-        <div>
-          <p>Group: <span className="uppercase font-normal">{filters.group}</span></p>
-          <p>City: <span className="uppercase font-normal">{filters.city}</span></p>
-          {(filters.fromDate || filters.toDate) && (
-            <p>Period: <span className="font-normal">{filters.fromDate ? new Date(filters.fromDate).toLocaleDateString('en-GB') : 'Start'} to {filters.toDate ? new Date(filters.toDate).toLocaleDateString('en-GB') : 'Today'}</span></p>
+      <div className="flex justify-between items-end mb-2">
+        <div className="font-bold text-sm">
+          {filters.fromDate || filters.toDate ? (
+             `Ledger for the Period of ${filters.fromDate ? new Date(filters.fromDate).toLocaleDateString('en-GB') : ''} - ${filters.toDate ? new Date(filters.toDate).toLocaleDateString('en-GB') : ''}`
+          ) : (
+             `Ledger Report`
           )}
         </div>
-        <div className="text-right">
-          <p>Party Type: <span className="uppercase font-normal">{filters.partyType}</span></p>
-          <p>Ledger Name: <span className="uppercase font-normal">{filters.ledgerName || 'ALL'}</span></p>
-        </div>
       </div>
 
-      {/* Table */}
-      <table className="w-full text-left border-collapse border border-black text-xs mb-8">
+      <table className="w-full text-left border-collapse border border-black text-xs">
         <thead>
-          <tr className="bg-[#d9d9d9]/50 border-b border-black">
-            <th className="border-r border-black p-2 font-bold w-10 text-center">S.No</th>
-            <th className="border-r border-black p-2 font-bold">Ledger Name</th>
-            <th className="border-r border-black p-2 font-bold w-24">City</th>
-            <th className="border-r border-black p-2 font-bold w-20 text-center">Party Type</th>
-            <th className="border-r border-black p-2 font-bold w-24 text-right">Total Purchases</th>
-            <th className="border-r border-black p-2 font-bold w-24 text-right">Total Returns</th>
-            <th className="border-r border-black p-2 font-bold w-24 text-right">Total Paid</th>
-            <th className="p-2 font-bold w-24 text-right">Balance Due</th>
+          <tr className="bg-[#e9e9e9]/30 border-t-2 border-b-2 border-black">
+            <th className="border-r border-black p-2 font-bold w-20 text-center">Date</th>
+            <th className="border-r border-black p-2 font-bold">Particulars</th>
+            <th className="border-r border-black p-2 font-bold">A/C Name</th>
+            <th className="border-r border-black p-2 font-bold w-20 text-center">Vch. Type</th>
+            <th className="border-r border-black p-2 font-bold w-16 text-center">Vch No</th>
+            <th className="border-r border-black p-2 font-bold w-20 text-right">Debit</th>
+            <th className="border-r border-black p-2 font-bold w-20 text-right">Credit</th>
+            <th className="p-2 font-bold w-24 text-right">Closing</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((c, i) => (
+          {data.map((t, i) => (
             <tr key={i} className="border-b border-black page-break">
-              <td className="border-r border-black p-2 text-center">{i + 1}</td>
-              <td className="border-r border-black p-2 font-semibold uppercase">{c.ledgerName}</td>
-              <td className="border-r border-black p-2 uppercase">{c.city || '-'}</td>
-              <td className="border-r border-black p-2 text-center">{c.partyType || '-'}</td>
-              <td className="border-r border-black p-2 text-right">₹{c.totalPurchases.toFixed(2)}</td>
-              <td className="border-r border-black p-2 text-right">₹{c.totalReturns.toFixed(2)}</td>
-              <td className="border-r border-black p-2 text-right">₹{c.totalPaid.toFixed(2)}</td>
-              <td className="p-2 text-right font-bold">₹{c.balanceDue.toFixed(2)}</td>
+              <td className="border-r border-black p-2 text-center align-top font-semibold">{t.dateStr}</td>
+              <td className="border-r border-black p-2 font-bold uppercase align-top">
+                {t.particulars}
+                {t.narration && (
+                   <div className="mt-1 normal-case font-semibold italic text-xs whitespace-pre-wrap">{t.narration}</div>
+                )}
+              </td>
+              <td className="border-r border-black p-2 font-semibold uppercase align-top">{t.acName}</td>
+              <td className="border-r border-black p-2 font-semibold text-center align-top">{t.vchType}</td>
+              <td className="border-r border-black p-2 font-semibold text-center align-top">{t.vchNo}</td>
+              <td className="border-r border-black p-2 font-semibold text-right align-top">{t.debit ? t.debit.toFixed(2) : ''}</td>
+              <td className="border-r border-black p-2 font-semibold text-right align-top">{t.credit ? t.credit.toFixed(2) : ''}</td>
+              <td className="p-2 font-semibold text-right align-top">{t.closingAmt} <span className="font-bold italic">{t.closingType}</span></td>
             </tr>
           ))}
-          {data.length === 0 && (
-            <tr>
-              <td colSpan="8" className="p-4 text-center italic">No data available for selected filters.</td>
-            </tr>
-          )}
         </tbody>
-        {data.length > 0 && (
-          <tfoot>
-            <tr className="bg-[#d9d9d9]/50 border-t-2 border-black font-bold">
-              <td colSpan="4" className="border-r border-black p-2 text-right">GRAND TOTAL:</td>
-              <td className="border-r border-black p-2 text-right">₹{totalPurchases.toFixed(2)}</td>
-              <td className="border-r border-black p-2 text-right">₹{totalReturns.toFixed(2)}</td>
-              <td className="border-r border-black p-2 text-right">₹{totalPaid.toFixed(2)}</td>
-              <td className="p-2 text-right">₹{totalBalance.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        )}
       </table>
-
-      {/* Footer */}
-      <div className="mt-8 flex justify-end px-4">
-        <div className="text-center font-bold">
-          <p className="mb-8">For DOLPHIN PUBLICATIONS</p>
-          <p>Authorised Signatory</p>
-        </div>
+      
+      <div className="mt-8 flex justify-between px-2 text-sm font-bold">
+        <p>Date : {new Date().toLocaleDateString('en-GB')}</p>
       </div>
 
     </div>

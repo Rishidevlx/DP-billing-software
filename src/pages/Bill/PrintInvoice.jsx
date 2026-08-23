@@ -1,4 +1,5 @@
 import React, { forwardRef } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 
 const PrintInvoice = forwardRef(({ billData }, ref) => {
   if (!billData) return null;
@@ -10,50 +11,91 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
     totals
   } = billData;
 
-  // Convert number to words helper (simple version for demo)
+  // Convert number to words helper
   const numberToWords = (num) => {
-    // A full implementation would go here. Returning a placeholder for now, 
-    // or we can just use the provided text if it's static in demo.
-    return "RUPEES " + num + " ONLY";
+    if (!num) return "ZERO";
+    const a = ['','ONE ','TWO ','THREE ','FOUR ', 'FIVE ','SIX ','SEVEN ','EIGHT ','NINE ','TEN ','ELEVEN ','TWELVE ','THIRTEEN ','FOURTEEN ','FIFTEEN ','SIXTEEN ','SEVENTEEN ','EIGHTEEN ','NINETEEN '];
+    const b = ['', '', 'TWENTY','THIRTY','FORTY','FIFTY', 'SIXTY','SEVENTY','EIGHTY','NINETY'];
+    const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+    if (!n) return;
+    let str = '';
+    str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'CRORE ' : '';
+    str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'LAKH ' : '';
+    str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'THOUSAND ' : '';
+    str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'HUNDRED ' : '';
+    str += (n[5] != 0) ? ((str != '') ? 'AND ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+    return "RUPEES " + str.trim() + " ONLY";
   };
 
   return (
-    <div ref={ref} className="p-6 bg-white text-black font-sans w-full mx-auto" style={{ width: '210mm', minHeight: '295mm' }}>
+    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', minHeight: '355mm', padding: '8mm', boxSizing: 'border-box' }}>
       <style>{`
         @media print {
-          @page { margin: 0; size: A4; }
+          @page { margin: 0; }
           body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .tear-off { page-break-inside: avoid; }
         }
       `}</style>
       
       {/* Outer Border */}
-      <div className="border-2 border-slate-800 h-[280mm] flex flex-col">
+      <div className={`border-2 border-slate-800 flex flex-col`} style={{ height: '271mm', pageBreakInside: 'avoid' }}>
         
         {/* HEADER SECTION */}
-        <div className="text-center pb-2 border-b-2 border-slate-800 relative">
-          <div className="absolute top-4 left-4">
-            <img src="/src/assets/DP-logo.png" alt="Logo" className="w-24 h-auto" />
+        <div className="flex border-b-2 border-slate-800 h-[155px]">
+          <div className="flex-1 flex border-r-2 border-slate-800 p-1">
+            <div className="w-[130px] flex justify-center items-center shrink-0">
+              <img src="/src/assets/DP-logo.png" alt="Logo" className="w-[120px] h-auto" />
+            </div>
+            <div className="flex-1 text-center flex flex-col justify-center">
+              <h3 className="font-bold text-[10px] tracking-widest uppercase text-red-700">Tax Invoice</h3>
+              <h1 className="text-3xl font-extrabold text-blue-800 uppercase tracking-wider mt-0.5" style={{ fontFamily: 'Arial, sans-serif', transform: 'scaleY(1.1)' }}>Dolphin Publications</h1>
+              <div className="border-b border-slate-800 my-1 mx-2"></div>
+              <div className="text-[11px] font-bold leading-tight text-slate-900 pb-1">
+                <p>239, Keelapatti Street,</p>
+                <p>Srivilliputtur - 626 125. Virudhunagar District</p>
+                <p>Tamil Nadu (Code : 33)</p>
+                <p className="text-[12px] mt-0.5">GSTIN : 33CAEPK4827P1ZC</p>
+                <p>Mobile : 98653-06197, 89256-77710</p>
+                <p>E-Mail : dolphin.pub2005@gmail.com <span className="ml-2">Website : www.kalvidolphin.com</span></p>
+              </div>
+            </div>
           </div>
-          <div className="pt-2">
-            <h3 className="font-bold text-sm tracking-widest uppercase text-red-700">Tax Invoice</h3>
-            <h1 className="text-3xl font-extrabold text-blue-800 mt-1 uppercase tracking-wide">Dolphin Publications</h1>
-            <p className="text-sm font-semibold mt-1">239, Keelapatti Street,</p>
-            <p className="text-sm font-semibold">Srivilliputtur - 626 125. Virudhunagar District</p>
-            <p className="text-sm font-semibold">Tamil Nadu (Code : 33)</p>
-            <p className="text-sm font-bold mt-1">GSTIN : 33CAEPK4827P1ZC</p>
-            <p className="text-sm font-semibold">Mobile : 98653-06197, 89256-77710</p>
-            <p className="text-sm font-semibold">E-Mail : dolphin.pub2005@gmail.com <span className="ml-4">Website : www.kalvidolphin.com</span></p>
+          <div className="w-[155px] flex justify-center items-center shrink-0">
+            {billInfo?.isEbill && billInfo?.qrCode ? (
+              <QRCodeCanvas value={billInfo.qrCode} size={110} level={"M"} />
+            ) : (
+              <div className="w-[110px] h-[110px]"></div>
+            )}
           </div>
         </div>
+
+        {/* IRN & ACK SECTION (Only if E-Bill is enabled) */}
+        {billInfo?.isEbill && (
+          <div className="flex border-b-2 border-slate-800 text-xs font-semibold p-1">
+            <div className="w-[60%] border-r-2 border-slate-800 px-2 flex items-center break-all">
+              <span className="mr-2 whitespace-nowrap">IRN :</span> 
+              <span className="font-normal">{billInfo?.irn || ''}</span>
+            </div>
+            <div className="w-[40%] px-2 flex flex-col justify-center">
+              <div className="flex mb-1">
+                <span className="w-20">Ack No</span><span className="mr-2">:</span>
+                <span className="font-normal">{billInfo?.ackNo || ''}</span>
+              </div>
+              <div className="flex">
+                <span className="w-20">Ack Date</span><span className="mr-2">:</span>
+                <span className="font-normal">{billInfo?.ackDate || ''}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* DETAILS SECTION */}
         <div className="flex border-b-2 border-slate-800">
           
           {/* Bill To (Left) */}
-          <div className="w-3/5 border-r-2 border-slate-800 p-2 text-sm leading-tight font-bold">
+          <div className="w-3/5 border-r-2 border-slate-800 p-1 px-2 text-sm leading-tight font-bold">
             <div className="flex justify-between">
               <span className="text-blue-800">BILL TO :</span>
-              {customer?.mobile && <span>Mob. No : {customer.mobile}</span>}
             </div>
             <div className="mt-2 text-slate-900 uppercase">
               <p>{customer?.name || "THE HEAD MISTRESS,"}</p>
@@ -62,7 +104,7 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
               <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>
               <p>{customer?.district || "Virudhunagar District"}</p>
               <p>Tamil Nadu (Code : 33)</p>
-              {customer?.phone && <p>Phone No : {customer.phone}</p>}
+              {customer?.mobile && <p>Mob. No : {customer.mobile}</p>}
             </div>
           </div>
 
@@ -124,20 +166,10 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
               </tr>
             </thead>
             <tbody className="align-top font-bold text-sm">
-              {/* Header row in items for HSN */}
-              <tr>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800 px-2 py-1 font-extrabold text-black">PRINTED BOOKS - HSN - 49011010</td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td></td>
-              </tr>
-              
               {items?.map((item, idx) => (
                 <tr key={idx}>
                   <td className="border-r-2 border-slate-800 text-center py-1">{idx + 1}</td>
-                  <td className="border-r-2 border-slate-800 px-2 py-1 font-medium">{item.itemName}</td>
+                  <td className="border-r-2 border-slate-800 px-2 py-1 font-medium uppercase">{item.particulars || item.itemName || item.name || ''}</td>
                   <td className="border-r-2 border-slate-800 text-right px-2 py-1 font-medium">{Number(item.rate).toFixed(2)}</td>
                   <td className="border-r-2 border-slate-800 text-center py-1 font-medium">{item.qty}</td>
                   <td className="border-r-2 border-slate-800 text-center py-1 font-medium">{item.teachersCopy}</td>
@@ -154,41 +186,147 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
                 <td className="border-r-2 border-slate-800"></td>
                 <td></td>
               </tr>
+              {/* Totals Rows inside the table */}
+              <tr>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800 px-2 py-1 text-right">Sub Total</td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800 text-center font-bold">{totals?.qty || "0"}</td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="text-right px-2 py-1 font-bold">{Number(totals?.grossAmount || totals?.amount || 0).toFixed(2)}</td>
+              </tr>
+              
+              {(billData.billSettings?.discountAmount > 0) && (
+              <tr>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800 px-2 py-1 text-right">
+                  Discount {billData.billSettings.discountPercent ? `(${billData.billSettings.discountPercent}%)` : ''}
+                </td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="text-right px-2 py-1 font-bold">{Number(billData.billSettings.discountAmount || 0).toFixed(2)}</td>
+              </tr>
+              )}
+              
+              {(billData.billSettings?.freight > 0) && (
+              <tr>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800 px-2 py-1 text-right">Packing & Forwarding</td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="text-right px-2 py-1 font-bold">{Number(billData.billSettings.freight).toFixed(2)}</td>
+              </tr>
+              )}
+
+              {(billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0) && (
+              <tr>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800 px-2 py-1 text-right">Round Off</td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="border-r-2 border-slate-800"></td>
+                <td className="text-right px-2 py-1 font-bold">{Number(billData.billSettings.roundOff).toFixed(2)}</td>
+              </tr>
+              )}
             </tbody>
           </table>
-        </div>
-
-        {/* TOTALS SECTION */}
-        <div className="flex border-t-2 border-slate-800 font-bold text-sm bg-slate-50">
-          <div className="flex-1 text-center py-1 flex items-center justify-center">Total</div>
-          <div className="w-16 border-l-2 border-slate-800 border-r-2 text-center py-1 flex items-center justify-center">{totals?.qty || "0"}</div>
-          <div className="w-20 border-r-2 border-slate-800"></div>
-          <div className="w-32 text-right px-2 py-1 flex items-center justify-end">{Number(totals?.amount || 0).toFixed(2)}</div>
         </div>
 
         <div className="flex border-t-2 border-b-2 border-slate-800 font-bold text-sm bg-slate-100">
           <div className="flex-1 px-2 py-1">GST EXEMPTED GOODS</div>
           <div className="w-40 border-l-2 border-r-2 border-slate-800 text-center py-1 text-blue-800">Net Amount</div>
-          <div className="w-32 text-right px-2 py-1">{Number(totals?.amount || 0).toFixed(2)}</div>
+          <div className="w-32 text-right px-2 py-1">{Number(totals?.netAmount || totals?.amount || 0).toFixed(2)}</div>
         </div>
 
         {/* FOOTER SECTION */}
         <div className="px-2 py-1 font-bold text-sm border-b-2 border-slate-800">
           <span className="text-blue-800">Amount (Words) : </span>
-          <span className="uppercase">{numberToWords(totals?.amount || 0)}</span>
+          <span className="uppercase">{numberToWords(Math.round(totals?.netAmount || totals?.amount || 0))}</span>
         </div>
 
-        <div className="flex justify-between p-2 pb-8 h-32 relative">
+        <div className="flex justify-between p-2 pb-4 h-24 relative">
           <div className="w-1/2">
             <h4 className="text-blue-800 font-bold text-sm underline mb-1">Terms and Conditions</h4>
             <p className="text-xs font-semibold">1. If you wish to return the books, you must return them within a month.</p>
           </div>
           <div className="w-1/2 flex flex-col justify-between items-end">
             <h4 className="text-blue-800 font-bold text-sm">For DOLPHIN PUBLICATIONS</h4>
-            <span className="font-bold text-sm mt-10">Authorised Signatory</span>
+            <span className="font-bold text-sm mt-6">Authorised Signatory</span>
           </div>
         </div>
 
+      </div>
+
+      {/* CUT LINE */}
+      <div className="relative flex items-center justify-center opacity-50" style={{ height: '5mm', marginTop: '1mm', marginBottom: '1mm' }}>
+        <div className="absolute w-full border-t-2 border-dashed border-slate-600"></div>
+        <span className="bg-white px-2 text-slate-600 text-lg relative z-10" style={{ transform: 'rotate(180deg)' }}>✂️</span>
+      </div>
+
+      {/* TEAR-OFF SLIP (Below Authorised Signatory) */}
+      <div className="border-2 border-slate-800 flex font-bold text-sm bg-slate-100 tear-off" style={{ height: '61mm' }}>
+        {/* Left Side: Address */}
+        <div className="w-1/2 border-r-2 border-slate-800 p-2 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between text-blue-800 mb-1">
+              <span>To :</span>
+              {customer?.mobile && <span className="text-slate-800">Mob. No : {customer.mobile}</span>}
+            </div>
+            <div className="text-slate-900 uppercase leading-snug">
+              <p>{customer?.name || "THE HEAD MISTRESS,"}</p>
+              <p>{customer?.school || "THIYAGARAJA HR SEC SCHOOL"}</p>
+              <p>{customer?.address1 || "N.G.G. O. COLONY"}</p>
+              <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>
+              <p>{customer?.district || "Virudhunagar District"}</p>
+              <p>Tamil Nadu (Code : 33)</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Details */}
+        <div className="w-1/2 p-2 relative text-blue-800 flex flex-col gap-1 leading-snug">
+          <div className="flex">
+            <span className="w-28">Bill No</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900">{billInfo?.billNo || "8199"}</span>
+          </div>
+          <div className="flex">
+            <span className="w-28">Transport</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900 uppercase">{billInfo?.transport || "DIRECT SALES"}</span>
+          </div>
+          <div className="flex">
+            <span className="w-28">Destination</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900 uppercase">{billInfo?.destination || ""}</span>
+          </div>
+          <div className="flex">
+            <span className="w-28">No. of Bundles</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900">{billInfo?.bundles || "0"}</span>
+          </div>
+          <div className="flex">
+            <span className="w-28">LR No</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900 uppercase">{billInfo?.lrNo || ""}</span>
+          </div>
+          <div className="flex">
+            <span className="w-28">LR Date</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900">{billInfo?.lrDate || ""}</span>
+          </div>
+          <div className="flex mt-1">
+            <span className="w-28">Booking</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900 font-extrabold">PAID / <span className="text-red-600">TO PAY</span></span>
+          </div>
+
+          <div className="absolute bottom-1 right-2">
+            <img src="/src/assets/DP-logo.png" alt="Logo" className="w-16 h-auto opacity-80" />
+          </div>
+        </div>
       </div>
     </div>
   );

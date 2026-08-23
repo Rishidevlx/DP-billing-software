@@ -150,7 +150,7 @@ export default function Guidance() {
                 <div className="absolute -top-3 -left-3 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">1</div>
                 <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-3 text-center border-b pb-2">Books Menu - Add Book</h3>
                 <div className="space-y-2">
-                  <input type="text" disabled placeholder="Item Code" className="w-full text-xs p-1.5 border rounded bg-slate-50 dark:bg-[#151521]" defaultValue="BK001" />
+                  <input type="text" disabled placeholder="Alias" className="w-full text-xs p-1.5 border rounded bg-slate-50 dark:bg-[#151521]" defaultValue="BK001" />
                   <input type="text" disabled placeholder="Book Name" className="w-full text-xs p-1.5 border rounded border-blue-400 bg-blue-50 dark:bg-blue-900/20" defaultValue="10 அமுதாசுரபி தமிழ்" />
                   <input type="text" disabled placeholder="Rate" className="w-full text-xs p-1.5 border rounded bg-slate-50 dark:bg-[#151521]" defaultValue="₹ 120.00" />
                   <div className="flex justify-center mt-2">
@@ -171,7 +171,7 @@ export default function Guidance() {
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b text-slate-500">
-                        <th className="pb-1">Item Code</th>
+                        <th className="pb-1">Alias</th>
                         <th className="pb-1">Item Name</th>
                         <th className="pb-1">Rate</th>
                       </tr>
