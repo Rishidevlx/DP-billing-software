@@ -124,7 +124,7 @@ export default function Sidebar({ isOpen }) {
     >
       {/* Logo Area */}
       <div className="h-16 flex items-center justify-center border-b border-white/10 gap-2">
-        <img src="/src/assets/DP-logo.png" alt="DP Logo" className="w-8 h-8 bg-white rounded-full p-0.5 object-cover" />
+        <img src="/DP-logo.png" alt="DP Logo" className="w-8 h-8 bg-white rounded-full p-0.5 object-cover" />
         {isOpen && (
           <h2 className="text-white text-xl font-bold tracking-wider">DOLPHIN</h2>
         )}

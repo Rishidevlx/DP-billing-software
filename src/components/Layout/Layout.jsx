@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import GlobalClientModal from '../Modal/GlobalClientModal';
@@ -7,6 +7,12 @@ import GlobalClientModal from '../Modal/GlobalClientModal';
 export default function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+
+  const isAuth = localStorage.getItem('isAuth') === 'true';
+
+  if (!isAuth) {
+    return <Navigate to="/login" replace />;
+  }
 
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {

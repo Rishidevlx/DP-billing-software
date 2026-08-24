@@ -10,9 +10,11 @@ import {
   User as UserIcon,
   ChevronDown,
   Settings,
-  LogOut
+  LogOut,
+  Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { usePWA } from '../../hooks/usePWA';
 
 export default function Navbar({ toggleSidebar }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -28,6 +30,7 @@ export default function Navbar({ toggleSidebar }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [activeSearchIndex, setActiveSearchIndex] = useState(0);
+  const { isInstallable, promptInstall } = usePWA();
 
   const searchablePages = [
     { title: 'Dashboard', path: '/dashboard' },
@@ -127,6 +130,7 @@ export default function Navbar({ toggleSidebar }) {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('isAuth');
     navigate('/login');
   };
 
@@ -206,6 +210,17 @@ export default function Navbar({ toggleSidebar }) {
 
       {/* Right side */}
       <div className="flex items-center gap-1 md:gap-2">
+        {isInstallable && (
+          <button 
+            onClick={promptInstall}
+            className="p-1.5 md:p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-blue-600 dark:text-blue-400 font-medium text-sm flex items-center justify-center cursor-pointer border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 px-3 gap-2"
+            title="Install App"
+          >
+            <Download size={16} />
+            <span className="hidden md:inline">Install App</span>
+          </button>
+        )}
+        
         {/* Fullscreen */}
         <button 
           onClick={toggleFullScreen}

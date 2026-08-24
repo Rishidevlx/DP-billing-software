@@ -1,11 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, User, Lock, Download } from 'lucide-react';
 import lottie from 'lottie-web';
 import animationData from './assets/growth-software.json';
+import { usePWA } from './hooks/usePWA';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
   const lottieContainer = useRef(null);
+  const { isInstallable, promptInstall } = usePWA();
+
+  useEffect(() => {
+    if (localStorage.getItem('isAuth') === 'true') {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const anim = lottie.loadAnimation({
@@ -37,7 +50,7 @@ export default function Login() {
         <div ref={lottieContainer} style={{ width: '100%', maxWidth: '520px', height: '380px' }} />
 
         <div style={{ textAlign: 'center', marginTop: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/src/assets/DP-logo.png" alt="DP Logo" style={{ width: '80px', height: 'auto', marginBottom: '1rem', background: '#fff', borderRadius: '50%', padding: '0.25rem' }} />
+          <img src="/DP-logo.png" alt="DP Logo" style={{ width: '80px', height: 'auto', marginBottom: '1rem', background: '#fff', borderRadius: '50%', padding: '0.25rem' }} />
           <h1 style={{ fontSize: '2.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>
             Dolphin Publications
           </h1>
@@ -59,17 +72,27 @@ export default function Login() {
           <h2 className="text-3xl font-semibold text-black mb-2">Welcome Back</h2>
           <p className="text-[#94A3B8] mb-10">Please enter your credentials to login.</p>
           
-          <form className="flex flex-col gap-6" onSubmit={(e) => e.preventDefault()}>
+          <form className="flex flex-col gap-6" onSubmit={(e) => {
+            e.preventDefault();
+            if (email === 'admin@dp.com' && password === 'admin123') {
+              localStorage.setItem('isAuth', 'true');
+              navigate('/dashboard');
+            } else {
+              setError('Invalid email or password');
+            }
+          }}>
+            {error && <div className="text-red-500 text-sm text-center">{error}</div>}
             
             {/* Username */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-black">Username</label>
+              <label className="text-sm font-medium text-black">Email</label>
               <div className="relative flex items-center">
                 <User size={20} className="absolute left-4 text-[#94A3B8]" />
                 <input 
-                  type="text" 
-                  placeholder="Enter your username" 
-                  defaultValue="admin_user"
+                  type="email" 
+                  placeholder="Enter your email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full py-3 pl-12 pr-4 border border-slate-200 rounded-lg text-base text-black bg-slate-50 outline-none transition-colors duration-300 focus:border-[#0E0D3A] focus:bg-white"
                 />
               </div>
@@ -83,7 +106,8 @@ export default function Login() {
                 <input 
                   type={showPassword ? "text" : "password"} 
                   placeholder="Enter your password" 
-                  defaultValue="dolphin_pass123"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full py-3 pl-12 pr-12 border border-slate-200 rounded-lg text-base text-black bg-slate-50 outline-none transition-colors duration-300 focus:border-[#0E0D3A] focus:bg-white"
                 />
                 <button 
@@ -121,6 +145,18 @@ export default function Login() {
             >
               Login
             </button>
+
+            {isInstallable && (
+              <button 
+                type="button" 
+                onClick={promptInstall}
+                style={{ backgroundColor: '#fff', color: '#0E0D3A', border: '1px solid #0E0D3A' }}
+                className="p-4 rounded-lg text-base font-medium cursor-pointer transition-all duration-300 hover:bg-slate-50 active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+              >
+                <Download size={20} />
+                Install App to Laptop
+              </button>
+            )}
           </form>
         </div>
       </div>

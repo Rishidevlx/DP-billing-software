@@ -1,0 +1,23 @@
+{
+  "name": "DP Billing Software",
+  "short_name": "DP Billing",
+  "description": "Professional Billing System for Dolphin Publications",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0D3A",
+  "theme_color": "#0E0D3A",
+  "icons": [
+    {
+      "src": "/DP-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/DP-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

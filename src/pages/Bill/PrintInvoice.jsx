@@ -44,7 +44,7 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
         <div className="flex border-b-2 border-slate-800 h-[155px]">
           <div className="flex-1 flex border-r-2 border-slate-800 p-1">
             <div className="w-[130px] flex justify-center items-center shrink-0">
-              <img src="/src/assets/DP-logo.png" alt="Logo" className="w-[120px] h-auto" />
+              <img src="/DP-logo.png" alt="Logo" className="w-[120px] h-auto" />
             </div>
             <div className="flex-1 text-center flex flex-col justify-center">
               <h3 className="font-bold text-[10px] tracking-widest uppercase text-red-700">Tax Invoice</h3>
@@ -324,7 +324,7 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
           </div>
 
           <div className="absolute bottom-1 right-2">
-            <img src="/src/assets/DP-logo.png" alt="Logo" className="w-16 h-auto opacity-80" />
+            <img src="/DP-logo.png" alt="Logo" className="w-16 h-auto opacity-80" />
           </div>
         </div>
       </div>
