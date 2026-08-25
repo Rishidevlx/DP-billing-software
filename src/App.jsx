@@ -111,6 +111,25 @@ function App() {
       localStorage.setItem('books', JSON.stringify(updatedBooks));
       localStorage.setItem('aliasMigrationDone1', 'true');
     }
+
+    // Price Migration (adding splPrice2 from seedBooks)
+    if (!localStorage.getItem('priceMigrationDone1')) {
+      const books = JSON.parse(localStorage.getItem('books') || '[]');
+      
+      const updatedBooks = books.map(b => {
+        const seedBook = booksList.find(sb => sb.itemName === b.itemName);
+        if (seedBook && seedBook.splPrice2) {
+          return {
+            ...b,
+            splPrice2: seedBook.splPrice2
+          };
+        }
+        return b;
+      });
+      
+      localStorage.setItem('books', JSON.stringify(updatedBooks));
+      localStorage.setItem('priceMigrationDone1', 'true');
+    }
   }, []);
 
   return (
