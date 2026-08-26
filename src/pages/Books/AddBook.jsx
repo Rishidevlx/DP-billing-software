@@ -83,7 +83,10 @@ export default function AddBook() {
             itemName: bookToEdit.book_name || '',
             group: bookToEdit.subject || 'BOOK',
             sellingPrice: bookToEdit.price || '',
-            mrp: bookToEdit.price || '',
+            mrp: bookToEdit.mrp || bookToEdit.price || '',
+            splPrice1: bookToEdit.agent_rate || '',
+            splPrice2: bookToEdit.school_rate || '',
+            splPrice3: bookToEdit.customer_rate || '',
             currentStock: bookToEdit.stock || 0
           });
         }
@@ -160,7 +163,11 @@ export default function AddBook() {
        price: formData.sellingPrice || formData.mrp || 0,
        stock: formData.currentStock || 0,
        std: '',
-       medium: ''
+       medium: '',
+       mrp: formData.mrp || formData.sellingPrice || 0,
+       school_rate: formData.splPrice2 || 0,
+       agent_rate: formData.splPrice1 || 0,
+       customer_rate: formData.splPrice3 || 0
     };
 
     if (isEditMode) {

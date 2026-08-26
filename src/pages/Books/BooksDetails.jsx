@@ -148,6 +148,7 @@ export default function BooksDetails() {
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Unit</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-center">Stocks</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Selling Price</th>
+                <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">School Rate</th>
                 <th className="p-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -168,6 +169,7 @@ export default function BooksDetails() {
                   <td className="p-4 text-sm text-slate-600 dark:text-slate-400 text-center">{book.unit || "NOS"}</td>
                   <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.stock || 0}</td>
                   <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-right">₹ {Number(book.price || book.sellingPrice).toFixed(2)}</td>
+                  <td className="p-4 text-sm font-medium text-green-600 dark:text-green-400 text-right">{book.school_rate ? `₹ ${Number(book.school_rate).toFixed(2)}` : '-'}</td>
                   <td className="p-4 flex items-center justify-end gap-3">
                     <button 
                       onClick={() => handleEdit(book.id)}

@@ -546,13 +546,13 @@ export default function CreateBill() {
     newItems[index].itemCode = book.itemCode || '';
     
     // Determine rate based on selected Price Type
-    let rate = parseFloat(book.mrp) || 0;
+    let rate = parseFloat(book.mrp) || parseFloat(book.price) || 0;
     const pt = billSettings.priceType;
-    if (pt === 'agent' && book.splPrice1) rate = parseFloat(book.splPrice1);
-    else if (pt === 'school' && book.splPrice2) rate = parseFloat(book.splPrice2);
-    else if (pt === 'customer' && book.splPrice3) rate = parseFloat(book.splPrice3);
+    if (pt === 'agent' && (book.splPrice1 || book.agent_rate)) rate = parseFloat(book.splPrice1 || book.agent_rate);
+    else if (pt === 'school' && (book.splPrice2 || book.school_rate)) rate = parseFloat(book.splPrice2 || book.school_rate);
+    else if (pt === 'customer' && (book.splPrice3 || book.customer_rate)) rate = parseFloat(book.splPrice3 || book.customer_rate);
     // fallback to MRP if the selected spl price is 0 or empty, or if MRP is selected
-    if (!rate && parseFloat(book.mrp)) rate = parseFloat(book.mrp);
+    if (!rate && (parseFloat(book.mrp) || parseFloat(book.price))) rate = parseFloat(book.mrp) || parseFloat(book.price);
 
     newItems[index].rate = rate.toFixed(2);
     const qty = parseFloat(newItems[index].qty) || 0;

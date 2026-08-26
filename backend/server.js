@@ -102,9 +102,19 @@ const initDB = async () => {
         medium VARCHAR(50),
         price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         stock INT NOT NULL DEFAULT 0,
-        alias_name VARCHAR(100)
+        alias_name VARCHAR(100),
+        mrp DECIMAL(10,2) DEFAULT 0.00,
+        school_rate DECIMAL(10,2) DEFAULT 0.00,
+        agent_rate DECIMAL(10,2) DEFAULT 0.00,
+        customer_rate DECIMAL(10,2) DEFAULT 0.00
       );
     `);
+
+    // Add price columns if they don't exist (for existing databases)
+    try { await pool.query('ALTER TABLE books ADD COLUMN mrp DECIMAL(10,2) DEFAULT 0.00'); } catch(e) {}
+    try { await pool.query('ALTER TABLE books ADD COLUMN school_rate DECIMAL(10,2) DEFAULT 0.00'); } catch(e) {}
+    try { await pool.query('ALTER TABLE books ADD COLUMN agent_rate DECIMAL(10,2) DEFAULT 0.00'); } catch(e) {}
+    try { await pool.query('ALTER TABLE books ADD COLUMN customer_rate DECIMAL(10,2) DEFAULT 0.00'); } catch(e) {}
 
     // 5. Clients Table
     await pool.query(`
@@ -460,11 +470,11 @@ app.get('/api/books', async (req, res) => {
 });
 
 app.post('/api/books', async (req, res) => {
-  const { book_name, std, subject, medium, price, stock, alias_name } = req.body;
+  const { book_name, std, subject, medium, price, stock, alias_name, mrp, school_rate, agent_rate, customer_rate } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO books (book_name, std, subject, medium, price, stock, alias_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [book_name, std, subject, medium, price, stock, alias_name]
+      'INSERT INTO books (book_name, std, subject, medium, price, stock, alias_name, mrp, school_rate, agent_rate, customer_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [book_name, std, subject, medium, price, stock, alias_name, mrp || price || 0, school_rate || 0, agent_rate || 0, customer_rate || 0]
     );
     res.status(201).json({ id: result.insertId, ...req.body });
   } catch (err) {
@@ -474,11 +484,11 @@ app.post('/api/books', async (req, res) => {
 
 app.put('/api/books/:id', async (req, res) => {
   const { id } = req.params;
-  const { book_name, std, subject, medium, price, stock, alias_name } = req.body;
+  const { book_name, std, subject, medium, price, stock, alias_name, mrp, school_rate, agent_rate, customer_rate } = req.body;
   try {
     await pool.query(
-      'UPDATE books SET book_name=?, std=?, subject=?, medium=?, price=?, stock=?, alias_name=? WHERE id=?',
-      [book_name, std, subject, medium, price, stock, alias_name, id]
+      'UPDATE books SET book_name=?, std=?, subject=?, medium=?, price=?, stock=?, alias_name=?, mrp=?, school_rate=?, agent_rate=?, customer_rate=? WHERE id=?',
+      [book_name, std, subject, medium, price, stock, alias_name, mrp || price || 0, school_rate || 0, agent_rate || 0, customer_rate || 0, id]
     );
     res.json({ message: 'Book updated successfully' });
   } catch (err) {
@@ -507,8 +517,8 @@ app.post('/api/books/seed', async (req, res) => {
     }
     for (const b of books) {
       await pool.query(
-        'INSERT INTO books (book_name, std, subject, medium, price, stock, alias_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [b.bookName || b.book_name, b.std, b.subject, b.medium, b.price, b.stock || 0, b.aliasName || b.alias_name]
+        'INSERT INTO books (book_name, std, subject, medium, price, stock, alias_name, mrp, school_rate, agent_rate, customer_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [b.bookName || b.book_name, b.std, b.subject, b.medium, b.price, b.stock || 0, b.aliasName || b.alias_name, b.mrp || b.price || 0, b.school_rate || b.splPrice2 || 0, b.agent_rate || b.splPrice1 || 0, b.customer_rate || b.splPrice3 || 0]
       );
     }
     res.status(201).json({ message: 'Books seeded successfully' });
