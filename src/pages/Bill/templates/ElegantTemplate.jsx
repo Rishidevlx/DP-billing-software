@@ -86,7 +86,7 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
                 {paddedItems.map((item, idx) => (
                   <tr key={idx} className="border-b border-[#E0D6C8] border-dashed">
                     <td className="py-1 px-2 text-[#7F8C8D]">{idx + 1}</td>
-                    <td className="py-1 px-2 font-medium">{item?.itemDetails || ""}</td>
+                    <td className="py-1 px-2 font-medium">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
                     <td className="py-1 px-2 text-right">{item?.qty || ""}</td>
                     <td className="py-1 px-2 text-right">{item?.rate || ""}</td>
                     <td className="py-1 px-2 text-right font-medium">{item?.amount ? Number(item.amount).toFixed(2) : ""}</td>

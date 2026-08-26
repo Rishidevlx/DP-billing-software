@@ -49,7 +49,13 @@ export const billsApi = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }))
+  })),
+  update: async (id, data) => handleResponse(await fetch(`${API_URL}/bills/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })),
+  delete: async (id) => handleResponse(await fetch(`${API_URL}/bills/${id}`, { method: 'DELETE' }))
 };
 
 // --- Returns API ---

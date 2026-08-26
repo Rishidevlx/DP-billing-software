@@ -615,8 +615,59 @@ app.post('/api/bills', async (req, res) => {
   }
 });
 
-// Note: Add DELETE and PUT for bills if needed
+// PUT to update a bill
+app.put('/api/bills/:id', async (req, res) => {
+  const { id } = req.params;
+  const { bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, items } = req.body;
+  try {
+    // 1. Fetch old items to reverse stock
+    const [oldItems] = await pool.query('SELECT * FROM bill_items WHERE bill_id=?', [id]);
+    for (const oldItem of oldItems) {
+      await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [oldItem.qty, oldItem.book_id]);
+    }
 
+    // 2. Update bills table
+    await pool.query(
+      'UPDATE bills SET bill_no=?, date=?, customer_id=?, transport=?, destination=?, lr_no=?, lr_date=?, bundles=?, gross_amount=?, discount_percent=?, discount_amount=?, freight=?, round_off=?, net_amount=?, created_by=? WHERE id=?',
+      [bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, id]
+    );
+
+    // 3. Delete old bill_items
+    await pool.query('DELETE FROM bill_items WHERE bill_id=?', [id]);
+
+    // 4. Insert new items and reduce stock
+    if (items && items.length > 0) {
+      for (const item of items) {
+        await pool.query(
+          'INSERT INTO bill_items (bill_id, book_id, qty, rate, amount, teachers_copy) VALUES (?, ?, ?, ?, ?, ?)',
+          [id, item.book_id, item.qty, item.rate, item.amount, item.teachers_copy || 0]
+        );
+        await pool.query('UPDATE books SET stock = stock - ? WHERE id = ?', [item.qty, item.book_id]);
+      }
+    }
+    res.json({ message: 'Bill updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE a bill
+app.delete('/api/bills/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // 1. Fetch items to reverse stock
+    const [oldItems] = await pool.query('SELECT * FROM bill_items WHERE bill_id=?', [id]);
+    for (const oldItem of oldItems) {
+      await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [oldItem.qty, oldItem.book_id]);
+    }
+
+    // 2. Delete bill (cascade will handle bill_items if set up, but we already have ON DELETE CASCADE)
+    await pool.query('DELETE FROM bills WHERE id=?', [id]);
+    res.json({ message: 'Bill deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ==========================================
 // RETURNS API
 // ==========================================

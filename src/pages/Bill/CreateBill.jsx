@@ -341,10 +341,7 @@ export default function CreateBill() {
 
     try {
       if (isEditMode) {
-        // We only have POST currently in the backend for bills API (create)
-        // You might need a PUT if edit is required
-        alert('Editing existing bills on API is not implemented yet.');
-        return;
+        await billsApi.update(id, payload);
       } else {
         await billsApi.create(payload);
       }

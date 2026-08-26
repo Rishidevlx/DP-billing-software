@@ -158,10 +158,9 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
           </div>
         </div>
 
-        {/* ITEMS TABLE */}
         <div className="flex-1 flex flex-col">
-          <table className="w-full text-sm font-semibold" style={{ tableLayout: 'fixed' }}>
-            <thead>
+          <table className="w-full text-sm font-semibold flex-1 flex flex-col" style={{ tableLayout: 'fixed' }}>
+            <thead className="w-full table" style={{ tableLayout: 'fixed' }}>
               <tr className="border-b-2 border-slate-800 bg-slate-100 text-blue-800">
                 <th className="w-12 border-r-2 border-slate-800 px-1 py-1">S.No</th>
                 <th className="border-r-2 border-slate-800 px-2 py-1 text-left">DESCRIPTION</th>
@@ -171,67 +170,67 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
                 <th className="w-32 px-2 py-1 text-right">AMOUNT<br/>Rs. P.</th>
               </tr>
             </thead>
-            <tbody className="text-slate-900">
+            <tbody className="text-slate-900 flex-1 flex flex-col w-full">
               {items && items.map((item, index) => (
-                <tr key={index} className="">
-                  <td className="border-r-2 border-slate-800 px-1 py-1 text-center">{index + 1}</td>
-                  <td className="border-r-2 border-slate-800 px-2 py-1">{item.itemName}</td>
-                  <td className="border-r-2 border-slate-800 px-1 py-1 text-center">{item.hsnCode || "4901"}</td>
-                  <td className="border-r-2 border-slate-800 px-1 py-1 text-center">{item.qty}</td>
-                  <td className="border-r-2 border-slate-800 px-1 py-1 text-center">{Number(item.rate).toFixed(2)}</td>
-                  <td className="text-right px-2 py-1">{Number(item.amount).toFixed(2)}</td>
+                <tr key={index} className="w-full table" style={{ tableLayout: 'fixed' }}>
+                  <td className="w-12 border-r-2 border-slate-800 px-1 py-1 text-center">{index + 1}</td>
+                  <td className="border-r-2 border-slate-800 px-2 py-1">{item.itemName || item.particulars || item.itemDetails || ""}</td>
+                  <td className="w-20 border-r-2 border-slate-800 px-1 py-1 text-center">{item.hsnCode || "4901"}</td>
+                  <td className="w-20 border-r-2 border-slate-800 px-1 py-1 text-center">{item.qty}</td>
+                  <td className="w-24 border-r-2 border-slate-800 px-1 py-1 text-center">{Number(item.rate).toFixed(2)}</td>
+                  <td className="w-32 text-right px-2 py-1">{Number(item.amount).toFixed(2)}</td>
                 </tr>
               ))}
-              <tr className="h-full">
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td></td>
+              <tr className="flex-1 w-full table" style={{ tableLayout: 'fixed' }}>
+                <td className="w-12 border-r-2 border-slate-800 h-full"></td>
+                <td className="border-r-2 border-slate-800 h-full"></td>
+                <td className="w-20 border-r-2 border-slate-800 h-full"></td>
+                <td className="w-20 border-r-2 border-slate-800 h-full"></td>
+                <td className="w-24 border-r-2 border-slate-800 h-full"></td>
+                <td className="w-32 h-full"></td>
               </tr>
               {/* Totals Rows inside the table */}
-              <tr>
-                <td className="border-r-2 border-slate-800"></td>
+              <tr className="w-full table" style={{ tableLayout: 'fixed' }}>
+                <td className="w-12 border-r-2 border-slate-800"></td>
                 <td className="border-r-2 border-slate-800 px-2 py-1 text-right">Sub Total</td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800 text-center font-bold">{totals?.qty || "0"}</td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="text-right px-2 py-1 font-bold">{Number(totals?.grossAmount || totals?.amount || 0).toFixed(2)}</td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-20 border-r-2 border-slate-800 text-center font-bold">{totals?.qty || "0"}</td>
+                <td className="w-24 border-r-2 border-slate-800"></td>
+                <td className="w-32 text-right px-2 py-1 font-bold">{Number(totals?.grossAmount || totals?.amount || 0).toFixed(2)}</td>
               </tr>
               
               {(billData.billSettings?.discountAmount > 0) && (
-              <tr>
-                <td className="border-r-2 border-slate-800"></td>
+              <tr className="w-full table" style={{ tableLayout: 'fixed' }}>
+                <td className="w-12 border-r-2 border-slate-800"></td>
                 <td className="border-r-2 border-slate-800 px-2 py-1 text-right">
                   Discount {billData.billSettings.discountPercent ? `(${billData.billSettings.discountPercent}%)` : ''}
                 </td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="text-right px-2 py-1 font-bold">{Number(billData.billSettings.discountAmount || 0).toFixed(2)}</td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-24 border-r-2 border-slate-800"></td>
+                <td className="w-32 text-right px-2 py-1 font-bold">{Number(billData.billSettings.discountAmount || 0).toFixed(2)}</td>
               </tr>
               )}
               
               {(billData.billSettings?.freight > 0) && (
-              <tr>
-                <td className="border-r-2 border-slate-800"></td>
+              <tr className="w-full table" style={{ tableLayout: 'fixed' }}>
+                <td className="w-12 border-r-2 border-slate-800"></td>
                 <td className="border-r-2 border-slate-800 px-2 py-1 text-right">Packing & Forwarding</td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="text-right px-2 py-1 font-bold">{Number(billData.billSettings.freight).toFixed(2)}</td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-24 border-r-2 border-slate-800"></td>
+                <td className="w-32 text-right px-2 py-1 font-bold">{Number(billData.billSettings.freight).toFixed(2)}</td>
               </tr>
               )}
 
               {(billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0) && (
-              <tr>
-                <td className="border-r-2 border-slate-800"></td>
+              <tr className="w-full table" style={{ tableLayout: 'fixed' }}>
+                <td className="w-12 border-r-2 border-slate-800"></td>
                 <td className="border-r-2 border-slate-800 px-2 py-1 text-right">Round Off</td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="border-r-2 border-slate-800"></td>
-                <td className="text-right px-2 py-1 font-bold">{Number(billData.billSettings.roundOff).toFixed(2)}</td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-20 border-r-2 border-slate-800"></td>
+                <td className="w-24 border-r-2 border-slate-800"></td>
+                <td className="w-32 text-right px-2 py-1 font-bold">{Number(billData.billSettings.roundOff).toFixed(2)}</td>
               </tr>
               )}
             </tbody>

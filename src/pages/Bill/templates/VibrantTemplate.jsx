@@ -98,7 +98,7 @@ const VibrantTemplate = forwardRef(({ billData }, ref) => {
                   {paddedItems.map((item, idx) => (
                     <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-rose-50/30"}>
                       <td className="py-2 px-4 text-center text-slate-400 text-xs font-medium">{idx + 1}</td>
-                      <td className="py-2 px-4 text-slate-700 font-medium">{item?.itemDetails || ""}</td>
+                      <td className="py-2 px-4 text-slate-700 font-medium">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
                       <td className="py-2 px-4 text-right text-slate-600">{item?.qty || ""}</td>
                       <td className="py-2 px-4 text-right text-slate-600">{item?.rate || ""}</td>
                       <td className="py-2 px-4 text-right font-bold text-slate-800">{item?.amount ? Number(item.amount).toFixed(2) : ""}</td>

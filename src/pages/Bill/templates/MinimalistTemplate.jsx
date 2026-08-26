@@ -84,7 +84,7 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
               <tbody className="divide-y divide-gray-100">
                 {paddedItems.slice(0, 10).map((item, idx) => (
                   <tr key={idx}>
-                    <td className="py-3 font-medium text-gray-800">{item?.itemDetails || ""}</td>
+                    <td className="py-3 font-medium text-gray-800">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
                     <td className="py-3 text-right text-gray-500">{item?.qty || ""}</td>
                     <td className="py-3 text-right text-gray-500">{item?.rate || ""}</td>
                     <td className="py-3 text-right font-medium">{item?.amount ? Number(item.amount).toFixed(2) : ""}</td>
