@@ -320,7 +320,11 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
             <span className="mr-2">:</span>
             <span className="text-slate-900">{billInfo?.lrDate || ""}</span>
           </div>
-
+          <div className="flex mt-1">
+            <span className="w-28">Booking</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900 font-extrabold">PAID / <span className="text-red-600">TO PAY</span></span>
+          </div>
 
           <div className="absolute right-2" style={{ top: '' }}>
             <img src="/DP-logo.png" alt="Logo" className="w-[180px] h-auto object-contain max-h-[145px]" />
