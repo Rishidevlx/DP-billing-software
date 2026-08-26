@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Printer, Search } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { booksApi, stocksApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
@@ -90,6 +91,8 @@ export default function EntryReport() {
   
   const [entries, setEntries] = useState([]);
   const [totalQty, setTotalQty] = useState(0);
+
+  const [allStocks, setAllStocks] = useState([]);
   
   const printRef = useRef();
 
@@ -99,8 +102,13 @@ export default function EntryReport() {
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     setDateFrom(firstDay.toISOString().split('T')[0]);
     
-    const savedBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    setBooksList(savedBooks);
+    Promise.all([
+      booksApi.getAll(),
+      stocksApi.getAll()
+    ]).then(([b, stk]) => {
+      setBooksList(b.map(book => ({ itemName: book.book_name, itemCode: book.alias_name, id: book.id })));
+      setAllStocks(stk);
+    }).catch(console.error);
   }, []);
 
   // Click outside listener for dropdown
@@ -115,27 +123,31 @@ export default function EntryReport() {
   }, []);
 
   useEffect(() => {
-    calculateReport();
-  }, [dateFrom, dateTo, selectedBook]);
+    if (allStocks.length > 0) {
+      calculateReport();
+    }
+  }, [dateFrom, dateTo, selectedBook, allStocks]);
 
   const calculateReport = () => {
-    const stockEntries = JSON.parse(localStorage.getItem('stock_entries') || '[]');
+    const stockEntries = allStocks;
 
     const allEntries = [];
 
     stockEntries.forEach(entry => {
-      entry.items?.forEach(item => {
-        if (!selectedBook || (item.itemName && item.itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
-          const dStr = entry.date || item.date || '';
-          allEntries.push({
-            dateRaw: parseDate(dStr),
-            dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
-            itemCode: item.itemCode || '',
-            itemName: item.itemName || 'Unknown Book',
-            qty: parseFloat(item.quantity) || 0
-          });
-        }
-      });
+      const book = booksList.find(b => b.id === entry.book_id) || {};
+      const itemName = book.itemName || 'Unknown';
+      const itemCode = book.itemCode || '';
+
+      if (!selectedBook || (itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
+        const dStr = entry.date || '';
+        allEntries.push({
+          dateRaw: parseDate(dStr),
+          dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
+          itemCode: itemCode,
+          itemName: itemName,
+          qty: parseFloat(entry.qty) || 0
+        });
+      }
     });
 
     const parsedFrom = dateFrom ? parseDate(dateFrom) : '0000-00-00';

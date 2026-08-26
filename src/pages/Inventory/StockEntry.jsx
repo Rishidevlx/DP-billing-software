@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PackagePlus, Save, Plus, Trash2, Search, Calendar, ArrowLeft } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useParams, useNavigate } from 'react-router-dom';
+import { stocksApi, booksApi } from '../../services/api';
 
 export default function StockEntry() {
   const { id } = useParams();
@@ -18,24 +19,33 @@ export default function StockEntry() {
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
 
   useEffect(() => {
-    const savedBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    setBooksList(savedBooks);
+    booksApi.getAll().then(data => {
+      const mapped = data.map(b => ({
+        id: b.id,
+        itemCode: b.alias_name || '',
+        itemName: b.book_name || '',
+        currentStock: b.stock || 0
+      }));
+      setBooksList(mapped);
+    }).catch(console.error);
 
     if (id) {
       setIsEditMode(true);
-      const stockEntries = JSON.parse(localStorage.getItem('stock_entries') || '[]');
-      const entryToEdit = stockEntries.find(e => e.id === id);
-      if (entryToEdit) {
-        setOriginalEntry(entryToEdit);
-        if (entryToEdit.items && entryToEdit.items.length > 0) {
-          // Ensure each item has a unique local id for rendering
-          const loadedItems = entryToEdit.items.map((item, index) => ({
-            ...item,
-            id: item.id || Date.now() + index
-          }));
-          setItems(loadedItems);
-        }
-      }
+      stocksApi.getAll().then(entries => {
+         const entryToEdit = entries.find(e => e.id.toString() === id);
+         if (entryToEdit) {
+            setOriginalEntry(entryToEdit);
+            setItems([{
+              id: entryToEdit.id,
+              itemCode: '', // Would need lookup if we want
+              itemName: '', // Would need lookup if we want
+              date: entryToEdit.date,
+              quantity: entryToEdit.qty
+            }]);
+            // Re-mapping itemName is tricky here without books array being ready.
+            // Ideally backend would return book details for stock entry.
+         }
+      }).catch(console.error);
     }
   }, [id]);
 
@@ -94,93 +104,57 @@ export default function StockEntry() {
     }
   };
 
-  const handleSave = () => {
-
-    
+  const handleSave = async () => {
     const validItems = items.filter(item => item.itemName && item.quantity > 0);
     if (validItems.length === 0) {
       Swal.fire('Error', 'Please add at least one valid item with a quantity greater than 0', 'error');
       return;
     }
 
-    // Save Stock Entry
-    const stockEntries = JSON.parse(localStorage.getItem('stock_entries') || '[]');
-    
-    if (isEditMode) {
-      const entryIndex = stockEntries.findIndex(e => e.id === id);
-      if (entryIndex !== -1) {
-        stockEntries[entryIndex] = {
-          ...stockEntries[entryIndex],
-          items: validItems
-        };
+    try {
+      if (isEditMode) {
+        alert('Edit API for stocks is not implemented yet.');
+        return;
       }
-    } else {
-      const newEntries = validItems.map(item => ({
-        id: Date.now().toString() + Math.random().toString().substring(2, 6),
-        date: item.date,
-        items: [item]
-      }));
-      stockEntries.push(...newEntries);
-    }
-    
-    localStorage.setItem('stock_entries', JSON.stringify(stockEntries));
 
-    // Update Books Stock
-    const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    
-    // Reverse original entry quantities if in edit mode
-    let booksAfterReversal = [...currentBooks];
-    if (isEditMode && originalEntry && originalEntry.items) {
-      booksAfterReversal = booksAfterReversal.map(book => {
-        const itemInOrig = originalEntry.items.find(i => (i.itemName || '').toLowerCase() === (book.itemName || '').toLowerCase());
-        if (itemInOrig) {
-          return {
-            ...book,
-            currentStock: (parseFloat(book.currentStock) || 0) - (parseFloat(itemInOrig.quantity) || 0)
-          };
+      for (const item of validItems) {
+        let bookId = null;
+        let book = booksList.find(b => b.itemName === item.itemName);
+        if (book) {
+          bookId = book.id;
+        } else {
+          // If the book doesn't exist, we ideally create it first.
+          // For now, let's create a new book.
+          const res = await booksApi.create({
+            book_name: item.itemName,
+            alias_name: item.itemCode || '',
+            std: '',
+            subject: '',
+            medium: '',
+            price: 0,
+            stock: 0
+          });
+          bookId = res.id;
         }
-        return book;
-      });
-    }
-
-    let updatedBooks = booksAfterReversal.map(book => {
-      const itemInEntry = validItems.find(i => (i.itemName || '').toLowerCase() === (book.itemName || '').toLowerCase());
-      if (itemInEntry) {
-        return {
-          ...book,
-          currentStock: (parseFloat(book.currentStock) || 0) + parseFloat(itemInEntry.quantity)
-        };
-      }
-      return book;
-    });
-    
-    // Add any completely new books to the books list
-    validItems.forEach(item => {
-      const exists = currentBooks.find(b => (b.itemName || '').toLowerCase() === (item.itemName || '').toLowerCase());
-      if (!exists) {
-        updatedBooks.push({
-          id: Date.now().toString() + Math.random().toString().substring(2, 6),
-          itemCode: item.itemCode || '',
-          itemName: item.itemName,
-          currentStock: parseFloat(item.quantity) || 0,
-          purchasePrice: 0,
-          salesPrice: 0,
-          category: 'General'
+        
+        await stocksApi.create({
+           date: item.date,
+           book_id: bookId,
+           qty: item.quantity,
+           type: 'ADD',
+           remarks: 'Stock Inward',
+           created_by: 'Admin'
         });
       }
-    });
-    
-    localStorage.setItem('books', JSON.stringify(updatedBooks));
 
-    Swal.fire('Success', isEditMode ? 'Stock Entry updated successfully!' : 'Stock Entry saved successfully! Stock quantities updated.', 'success').then(() => {
-      if (isEditMode) {
-        navigate('/stocks/all');
-      } else {
-        // Reset Form
+      Swal.fire('Success', 'Stock Entry saved successfully! Stock quantities updated.', 'success').then(() => {
         setItems([{ id: 1, itemCode: '', itemName: '', date: new Date().toISOString().split('T')[0], quantity: '' }]);
-        setBooksList(updatedBooks); // refresh local state
-      }
-    });
+      });
+      
+    } catch (e) {
+       console.error(e);
+       Swal.fire('Error', 'Failed to save stock entries to database', 'error');
+    }
   };
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Printer, Search } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { booksApi, billsApi, returnsApi, stocksApi, clientsApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
@@ -98,6 +99,12 @@ export default function ItemReport() {
   
   const [transactions, setTransactions] = useState([]);
   
+  // API Data States
+  const [allBills, setAllBills] = useState([]);
+  const [allReturns, setAllReturns] = useState([]);
+  const [allStocks, setAllStocks] = useState([]);
+  const [clients, setClients] = useState([]);
+
   const printRef = useRef();
 
   useEffect(() => {
@@ -106,13 +113,27 @@ export default function ItemReport() {
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     setDateFrom(firstDay.toISOString().split('T')[0]);
     
-    const savedBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    setBooksList(savedBooks);
+    // Fetch all required data once
+    Promise.all([
+      booksApi.getAll(),
+      billsApi.getAll(),
+      returnsApi.getAll(),
+      stocksApi.getAll(),
+      clientsApi.getAll()
+    ]).then(([b, bls, ret, stk, cli]) => {
+      setBooksList(b.map(book => ({ itemName: book.book_name, itemCode: book.alias_name })));
+      setAllBills(bls);
+      setAllReturns(ret);
+      setAllStocks(stk);
+      setClients(cli);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
-    calculateReport();
-  }, [dateFrom, dateTo, selectedBook]);
+    if (allBills.length > 0 || allReturns.length > 0 || allStocks.length > 0) {
+       calculateReport();
+    }
+  }, [dateFrom, dateTo, selectedBook, allBills, allReturns, allStocks]);
 
   // Click outside listener for dropdown
   useEffect(() => {
@@ -126,39 +147,46 @@ export default function ItemReport() {
   }, []);
 
   const calculateReport = () => {
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const returns = JSON.parse(localStorage.getItem('returns') || '[]');
-    const stockEntries = JSON.parse(localStorage.getItem('stock_entries') || '[]');
+    const bills = allBills;
+    const returns = allReturns;
+    const stockEntries = allStocks;
 
     const allTransactions = [];
 
     stockEntries.forEach(entry => {
-      entry.items?.forEach(item => {
-        if (!selectedBook || (item.itemName && item.itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
-          const dStr = entry.date || item.date;
-          allTransactions.push({
-            dateRaw: parseDate(dStr),
-            dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
-            vchType: 'Stock Entry',
-            vchNo: entry.id.substring(0, 6).toUpperCase(),
-            partyName: 'Self',
-            inQty: parseFloat(item.quantity) || 0,
-            outQty: 0
-          });
-        }
-      });
+      // Find book
+      const book = booksList.find(b => b.id === entry.book_id) || {};
+      const itemName = book.itemName || 'Unknown';
+      
+      if (!selectedBook || (itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
+        const dStr = entry.date;
+        allTransactions.push({
+          dateRaw: parseDate(dStr),
+          dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
+          vchType: 'Stock Entry',
+          vchNo: entry.id.toString().substring(0, 6).toUpperCase(),
+          partyName: 'Self',
+          inQty: parseFloat(entry.qty) || 0,
+          outQty: 0
+        });
+      }
     });
 
     returns.forEach(ret => {
       ret.items?.forEach(item => {
-        if (!selectedBook || (item.itemName && item.itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
-          const dStr = ret.returnInfo?.date || '';
+        const book = booksList.find(b => b.id === item.book_id) || {};
+        const itemName = book.itemName || 'Unknown';
+
+        if (!selectedBook || (itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
+          const dStr = ret.date || '';
+          const customer = clients.find(c => c.id === ret.customer_id) || {};
+          
           allTransactions.push({
             dateRaw: parseDate(dStr),
             dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
             vchType: 'Sales Return',
-            vchNo: ret.returnInfo?.returnNo || '',
-            partyName: ret.customer?.name || 'Unknown',
+            vchNo: ret.return_no || '',
+            partyName: customer.name || 'Unknown',
             inQty: parseFloat(item.qty) || 0,
             outQty: 0
           });
@@ -168,14 +196,19 @@ export default function ItemReport() {
 
     bills.forEach(bill => {
       bill.items?.forEach(item => {
-        if (!selectedBook || (item.itemName && item.itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
-          const dStr = bill.billInfo?.date || '';
+        const book = booksList.find(b => b.id === item.book_id) || {};
+        const itemName = book.itemName || 'Unknown';
+
+        if (!selectedBook || (itemName.toLowerCase() === selectedBook.itemName.toLowerCase())) {
+          const dStr = bill.date || '';
+          const customer = clients.find(c => c.id === bill.customer_id) || {};
+
           allTransactions.push({
             dateRaw: parseDate(dStr),
             dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
             vchType: 'Sale',
-            vchNo: bill.billInfo?.billNo || '',
-            partyName: bill.customer?.name || 'Unknown',
+            vchNo: bill.bill_no || '',
+            partyName: customer.name || 'Unknown',
             inQty: 0,
             outQty: parseFloat(item.qty) || 0
           });

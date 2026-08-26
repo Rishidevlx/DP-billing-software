@@ -4,6 +4,7 @@ import { Save, Printer, ArrowLeft } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import PrintReturn from './PrintReturn';
 import Swal from 'sweetalert2';
+import { returnsApi, clientsApi, booksApi, billsApi } from '../../services/api';
 
 export default function CreateReturn() {
   const { id } = useParams();
@@ -17,53 +18,84 @@ export default function CreateReturn() {
   const [allBills, setAllBills] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('clients');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const mapped = parsed.map(c => ({
-        name: c.ledgerName || '',
-        mobile: c.mobileNo || '',
-        school: c.printName || '',
-        address1: c.address || '',
-        address2: c.city || '',
+    // Load clients
+    clientsApi.getAll().then(data => {
+      const mapped = data.map(c => ({
+        id: c.id,
+        name: c.name || '',
+        mobile: c.mobile || '',
+        school: c.school || '',
+        address1: c.address1 || '',
+        address2: c.town || '', 
         district: c.district || '',
-        phone: c.phoneNo || ''
+        phone: ''
       }));
       setDbClients(mapped);
-    }
+    }).catch(console.error);
 
     // Load books
-    const savedBooks = localStorage.getItem('books');
-    const parsedBooks = savedBooks ? JSON.parse(savedBooks) : [];
-    setBooksList(parsedBooks);
+    booksApi.getAll().then(data => {
+      const mapped = data.map(b => ({
+        id: b.id,
+        itemCode: b.alias_name || '',
+        hsnCode: '',
+        itemName: b.book_name || '',
+        mrp: b.price || '0.00',
+        stock: b.stock || 0
+      }));
+      setBooksList(mapped);
+    }).catch(console.error);
     
     // Load bills for connecting returns
-    const savedBills = localStorage.getItem('bills');
-    const parsedBills = savedBills ? JSON.parse(savedBills) : [];
-    setAllBills(parsedBills);
+    billsApi.getAll().then(data => {
+      const mapped = data.map(b => ({
+         billInfo: { billNo: b.bill_no, date: b.date },
+         customer: { id: b.customer_id }
+      }));
+      setAllBills(mapped);
+    }).catch(console.error);
 
     // Determine next Return No
-    const savedReturns = localStorage.getItem('returns');
-    if (savedReturns) {
-      const parsed = JSON.parse(savedReturns);
-      
+    returnsApi.getAll().then(returns => {
       if (id) {
         // Edit mode
-        const returnToEdit = parsed.find(b => b.id.toString() === id);
+        const returnToEdit = returns.find(b => b.id.toString() === id);
         if (returnToEdit) {
           setIsEditMode(true);
-          setReturnInfo(returnToEdit.returnInfo);
-          setCustomer(returnToEdit.customer);
-          setItems(returnToEdit.items);
+          setReturnInfo({
+             returnNo: returnToEdit.return_no,
+             date: returnToEdit.date,
+             originalBillNo: '', // Not stored in current schema, ideally should be mapped
+             transport: returnToEdit.transport,
+             reason: 'STOCK RETURN',
+             priceType: 'mrp'
+          });
+          
+          if (returnToEdit.customer_id) {
+             const cust = dbClients.find(c => c.id === returnToEdit.customer_id);
+             if (cust) setCustomer(cust);
+          }
+          
+          if (returnToEdit.items && returnToEdit.items.length > 0) {
+            setItems(returnToEdit.items.map((item, idx) => ({
+               id: idx + 1,
+               book_id: item.book_id,
+               qty: item.qty,
+               rate: item.rate,
+               amount: item.amount
+            })));
+          }
         }
-      } else if (parsed.length > 0) {
+      } else {
         // Create mode
-        const lastReturnNo = parseInt(parsed[parsed.length - 1].returnInfo.returnNo) || 0;
+        const lastReturnNo = returns.length > 0 ? (parseInt(returns[returns.length - 1].return_no) || 0) : 0;
         const nextNo = String(lastReturnNo + 1).padStart(3, '0');
         setReturnInfo(prev => ({ ...prev, returnNo: nextNo }));
       }
-    }
-  }, [id]);
+    }).catch(err => {
+      if (!id) setReturnInfo(prev => ({ ...prev, returnNo: '001' }));
+    });
+  }, [id, dbClients.length]);
 
   const [returnInfo, setReturnInfo] = useState({
     returnNo: '001',
@@ -119,88 +151,50 @@ export default function CreateReturn() {
     documentTitle: `Return_Invoice_${returnInfo.returnNo}`,
   });
 
-  const handleSave = () => {
-    const savedReturns = localStorage.getItem('returns');
-    const parsedReturns = savedReturns ? JSON.parse(savedReturns) : [];
-    
+  const handleSave = async () => {
     const validItems = items.filter(i => i.itemName);
     if (validItems.length === 0) {
       Swal.fire('Error', 'Please add at least one item to save the return note.', 'error');
       return;
     }
 
-    const newReturn = {
-      id: isEditMode ? parseInt(id) : Date.now(),
-      returnInfo,
-      customer,
-      items: validItems,
-      totals
+    const payload = {
+      return_no: returnInfo.returnNo,
+      date: returnInfo.date,
+      customer_id: customer.id || null,
+      transport: returnInfo.transport,
+      lr_no: '', // Assuming empty for now
+      lr_date: '',
+      bundles: '0',
+      gross_amount: totals.amount,
+      discount_percent: 0,
+      discount_amount: 0,
+      freight: 0,
+      round_off: 0,
+      net_amount: totals.amount,
+      created_by: 'Admin',
+      items: validItems.map(item => {
+        const book = booksList.find(b => b.itemName === item.itemName && b.itemCode === item.itemCode);
+        return {
+          book_id: book ? book.id : null,
+          qty: item.qty,
+          rate: item.rate,
+          amount: item.amount
+        };
+      }).filter(item => item.book_id !== null)
     };
-    
-    // --- STOCK MANAGEMENT START ---
-    const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    
-    if (isEditMode) {
-      const originalReturn = parsedReturns.find(b => b.id.toString() === id);
-      if (originalReturn && originalReturn.items) {
-        // Revert previous returned quantities (deduct them back from stock)
-        originalReturn.items.forEach(oldItem => {
-          if (!oldItem.itemName) return;
-          const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
-          if (bookIndex !== -1) {
-            currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) - (parseFloat(oldItem.qty) || 0);
-          }
-        });
+
+    try {
+      if (isEditMode) {
+        alert('Editing existing returns on API is not implemented yet.');
+        return;
+      } else {
+        await returnsApi.create(payload);
       }
-    }
-
-    // Add new returned quantities to stock
-    validItems.forEach(newItem => {
-      const bookIndex = currentBooks.findIndex(b => b.itemCode === newItem.itemCode && b.itemName === newItem.itemName);
-      if (bookIndex !== -1) {
-        currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) + (parseFloat(newItem.qty) || 0);
-      }
-    });
-
-    localStorage.setItem('books', JSON.stringify(currentBooks));
-    // --- STOCK MANAGEMENT END ---
-
-      // Mute Original Bill amounts if linked
-      if (returnInfo.originalBillNo && !isEditMode) { // Original logic only muted on create, not edit to avoid double deducting. Let's keep that constraint.
-        const currentBills = JSON.parse(localStorage.getItem('bills') || '[]');
-        const billIndex = currentBills.findIndex(b => b.billInfo.billNo === returnInfo.originalBillNo);
-        if (billIndex !== -1) {
-          const originalBill = currentBills[billIndex];
-          // Subtract returned items from original bill items
-          const updatedBillItems = originalBill.items.map(origItem => {
-            const returnedEquivalent = validItems.find(vi => vi.itemName.toLowerCase() === origItem.itemName.toLowerCase());
-            if (returnedEquivalent) {
-              const newQty = Math.max(0, parseFloat(origItem.qty) - parseFloat(returnedEquivalent.qty));
-              const newAmount = newQty * parseFloat(origItem.rate);
-              return { ...origItem, qty: newQty.toString(), amount: newAmount.toString() };
-            }
-            return origItem;
-          });
-          // Recalculate original bill totals
-          const updatedTotals = updatedBillItems.reduce((acc, item) => {
-            acc.qty += parseFloat(item.qty) || 0;
-            acc.amount += parseFloat(item.amount) || 0;
-            return acc;
-          }, { qty: 0, amount: 0 });
-
-          originalBill.items = updatedBillItems;
-          originalBill.totals = updatedTotals;
-          currentBills[billIndex] = originalBill;
-          localStorage.setItem('bills', JSON.stringify(currentBills));
-        }
-      }
-
-    if (isEditMode) {
-      const updatedReturns = parsedReturns.map(b => b.id.toString() === id ? newReturn : b);
-      localStorage.setItem('returns', JSON.stringify(updatedReturns));
-    } else {
-      parsedReturns.push(newReturn);
-      localStorage.setItem('returns', JSON.stringify(parsedReturns));
+    } catch (e) {
+      console.error(e);
+      Swal.fire('Error', 'Failed to save return to database', 'error');
+      return;
     }
 
     Swal.fire({

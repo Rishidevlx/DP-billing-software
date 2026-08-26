@@ -4,6 +4,7 @@ import { Save, RefreshCw, Search, X, Check, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
 import PrintReceipt from './PrintReceipt';
+import { receiptsApi, clientsApi, billsApi } from '../../services/api';
 
 export default function ReceiptPage() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function ReceiptPage() {
   
   const [clients, setClients] = useState([]);
   const [bills, setBills] = useState([]);
+  const [banks, setBanks] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [originalAllocations, setOriginalAllocations] = useState({});
   
@@ -58,41 +60,71 @@ export default function ReceiptPage() {
 
   // Initialization
   useEffect(() => {
-    const savedClients = JSON.parse(localStorage.getItem('clients') || '[]');
-    setClients(savedClients);
+    // Load clients
+    clientsApi.getAll().then(data => {
+      const mapped = data.map(c => ({
+        id: c.id,
+        ledgerName: c.name || '',
+        mobileNo: c.mobile || ''
+      }));
+      setClients(mapped);
+    }).catch(console.error);
     
-    const savedBills = JSON.parse(localStorage.getItem('bills') || '[]');
-    setBills(savedBills);
+    // Load bills
+    billsApi.getAll().then(data => {
+      const mapped = data.map(b => ({
+         id: b.id,
+         billInfo: { billNo: b.bill_no, date: b.date },
+         customer: { name: '' }, // we will join this if needed, or rely on customer_id
+         totals: { amount: b.net_amount },
+         amountPaid: b.amount_paid || 0,
+         customer_id: b.customer_id
+      }));
+      setBills(mapped);
+    }).catch(console.error);
+
+    const savedBanks = JSON.parse(localStorage.getItem('banks') || '[]');
+    setBanks(savedBanks);
     
-    const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    
-    if (id) {
-      const existingReceipt = savedReceipts.find(r => r.id.toString() === id);
-      if (existingReceipt) {
-        setIsEditMode(true);
-        setFormData({
-          voucherNo: existingReceipt.voucherNo || '',
-          date: existingReceipt.date || new Date().toISOString().split('T')[0],
-          accountName: existingReceipt.accountName || 'CASH',
-          customerName: existingReceipt.customerName || '',
-          billNo: existingReceipt.billNo || '',
-          amount: existingReceipt.amount || '',
-          shortage: existingReceipt.shortage || '',
-          narrationSno: existingReceipt.narrationSno || '',
-          narrationPg: existingReceipt.narrationPg || '',
-          narrationDate: existingReceipt.narrationDate || ''
-        });
-        setAllocatedBills(existingReceipt.allocations || {});
-        setOriginalAllocations(existingReceipt.allocations || {});
+    // Load receipts
+    receiptsApi.getAll().then(savedReceipts => {
+      if (id) {
+        const existingReceipt = savedReceipts.find(r => r.id.toString() === id);
+        if (existingReceipt) {
+          setIsEditMode(true);
+          setFormData({
+            voucherNo: existingReceipt.receipt_no || '',
+            date: existingReceipt.date || new Date().toISOString().split('T')[0],
+            accountName: existingReceipt.payment_mode || 'CASH',
+            customerName: '', // Need to map customer ID to name
+            billNo: '',
+            amount: existingReceipt.amount || '',
+            shortage: existingReceipt.shortage || '',
+            narrationSno: '',
+            narrationPg: '',
+            narrationDate: ''
+          });
+          
+          if (existingReceipt.customer_id) {
+             clientsApi.getAll().then(clients => {
+                const c = clients.find(cl => cl.id === existingReceipt.customer_id);
+                if (c) setFormData(prev => ({...prev, customerName: c.name}));
+             });
+          }
+          
+          setAllocatedBills({});
+          setOriginalAllocations({});
+        } else {
+          Swal.fire('Error', 'Receipt not found', 'error');
+          navigate('/reports/all-receipts');
+        }
       } else {
-        Swal.fire('Error', 'Receipt not found', 'error');
-        navigate('/reports/all-receipts');
+        const nextVoucher = (savedReceipts.length + 1).toString().padStart(3, '0');
+        setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
       }
-    } else {
-      // Auto-generate Voucher No starting from 000
-      const nextVoucher = savedReceipts.length.toString().padStart(3, '0');
-      setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
-    }
+    }).catch(err => {
+      if (!id) setFormData(prev => ({ ...prev, voucherNo: '001' }));
+    });
   }, [id, navigate]);
 
   // Calculate total pending amount for selected customer
@@ -317,49 +349,35 @@ export default function ReceiptPage() {
     }
   };
 
-  const saveReceipt = () => {
-    const newReceipt = {
-      ...formData,
-      id: isEditMode ? Number(id) : Date.now(),
-      allocations: allocatedBills
+  const saveReceipt = async () => {
+    // Find customer ID
+    const customer = clients.find(c => c.ledgerName === formData.customerName);
+    
+    const payload = {
+      receipt_no: formData.voucherNo,
+      date: formData.date,
+      customer_id: customer ? customer.id : null,
+      amount: formData.amount,
+      payment_mode: formData.accountName,
+      reference_no: '',
+      remarks: '',
+      created_by: 'Admin'
     };
 
-    const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    let updatedReceipts = [];
-
-    if (isEditMode) {
-      updatedReceipts = savedReceipts.map(r => r.id.toString() === id ? newReceipt : r);
-    } else {
-      updatedReceipts = [...savedReceipts, newReceipt];
+    try {
+      if (isEditMode) {
+        alert('Editing existing receipts on API is not implemented yet.');
+        return;
+      } else {
+        await receiptsApi.create(payload);
+      }
+    } catch (e) {
+      console.error(e);
+      Swal.fire('Error', 'Failed to save receipt to database', 'error');
+      return;
     }
-    
-    localStorage.setItem('receipts', JSON.stringify(updatedReceipts));
 
-    // Update Bills
-    const updatedBills = bills.map(bill => {
-      let currentPaid = parseFloat(bill.amountPaid || 0);
-      
-      // If edit mode, FIRST subtract the original allocation
-      if (isEditMode && originalAllocations[bill.id]) {
-        currentPaid -= originalAllocations[bill.id];
-      }
-      
-      // THEN add the new allocation
-      if (allocatedBills[bill.id]) {
-        currentPaid += allocatedBills[bill.id];
-      }
-      
-      return {
-        ...bill,
-        amountPaid: currentPaid.toFixed(2)
-      };
-    });
-    
-    localStorage.setItem('bills', JSON.stringify(updatedBills));
-    setBills(updatedBills); // update local state
-    setOriginalAllocations(allocatedBills); // reset original to current just in case
-
-    setLastSavedReceipt(newReceipt);
+    setLastSavedReceipt(payload);
 
     Swal.fire({
       title: 'Success',
@@ -370,14 +388,14 @@ export default function ReceiptPage() {
       cancelButtonText: 'No'
     }).then((result) => {
       if (!isEditMode && result.isConfirmed) {
-        setTimeout(handlePrint, 500); // Wait for state update to trigger render
+        setTimeout(handlePrint, 500); 
       }
       
       if (isEditMode) {
         navigate('/reports/all-receipts');
       } else {
         // Reset Form
-        const nextVoucher = updatedReceipts.length.toString().padStart(3, '0');
+        const nextVoucher = (parseInt(formData.voucherNo) + 1).toString().padStart(3, '0');
         setFormData({
           voucherNo: nextVoucher,
           date: new Date().toISOString().split('T')[0],
@@ -391,6 +409,11 @@ export default function ReceiptPage() {
           narrationDate: ''
         });
         setAllocatedBills({});
+        setTimeout(() => {
+          if (clientInputRef.current) {
+            clientInputRef.current.focus();
+          }
+        }, 50);
       }
     });
   };
@@ -431,12 +454,15 @@ export default function ReceiptPage() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">A/C Name</label>
-              <input 
-                type="text" 
+              <select
                 value={formData.accountName}
                 onChange={(e) => setFormData(prev => ({ ...prev, accountName: e.target.value }))}
                 className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 font-bold"
-              />
+              >
+                {['CASH', ...banks.map(b => typeof b === 'string' ? b : b.name).filter(b => b.toUpperCase() !== 'CASH')].map((bName, i) => (
+                  <option key={i} value={bName}>{bName}</option>
+                ))}
+              </select>
             </div>
 
             {/* Customer Name */}

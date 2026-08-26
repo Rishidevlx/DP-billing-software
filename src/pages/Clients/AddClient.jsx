@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, RefreshCw } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useParams, useNavigate } from 'react-router-dom';
+import { clientsApi } from '../../services/api';
 
 // Reusable Input Component
 const InputField = ({ label, name, type = "text", placeholder = "", required = false, formData, onChange, className = "" }) => (
@@ -82,14 +83,22 @@ export default function AddClient() {
 
   useEffect(() => {
     if (isEditMode) {
-      const saved = localStorage.getItem('clients');
-      if (saved) {
-        const clients = JSON.parse(saved);
+      clientsApi.getAll().then(clients => {
         const client = clients.find(c => c.id === parseInt(id));
         if (client) {
-          setFormData(client);
+          setFormData({
+            ...initialData,
+            ...client,
+            ledgerName: client.name || '',
+            printName: client.school || '',
+            mobileNo: client.mobile || '',
+            address: client.address1 || '',
+            pinCode: client.address2 || '',
+            city: client.town || '',
+            district: client.district || ''
+          });
         }
-      }
+      });
     }
   }, [id, isEditMode]);
 
@@ -142,41 +151,51 @@ export default function AddClient() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("Client Data Submitted:", formData);
     
-    const saved = localStorage.getItem('clients');
-    const clients = saved ? JSON.parse(saved) : [];
+    const payload = {
+      name: formData.ledgerName,
+      school: formData.printName,
+      mobile: formData.mobileNo,
+      address1: formData.address,
+      address2: formData.pinCode,
+      town: formData.city,
+      district: formData.district,
+      state: ''
+    };
     
     if (isEditMode) {
-      const index = clients.findIndex(c => c.id === parseInt(id));
-      if (index !== -1) {
-        clients[index] = { ...formData, id: parseInt(id) };
+      try {
+        await clientsApi.update(id, payload);
+        Swal.fire({
+          title: 'Updated!',
+          text: 'Client/customer details have been successfully updated.',
+          icon: 'success',
+          confirmButtonColor: '#2563eb',
+        }).then(() => {
+          navigate('/clients/details');
+        });
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'Failed to update client', 'error');
       }
-      localStorage.setItem('clients', JSON.stringify(clients));
-
-      Swal.fire({
-        title: 'Updated!',
-        text: 'Client/customer details have been successfully updated.',
-        icon: 'success',
-        confirmButtonColor: '#2563eb',
-      }).then(() => {
-        navigate('/clients/details');
-      });
     } else {
-      const newClient = { ...formData, id: Date.now() };
-      clients.push(newClient);
-      localStorage.setItem('clients', JSON.stringify(clients));
-
-      Swal.fire({
-        title: 'Created!',
-        text: 'New client/customer has been successfully added.',
-        icon: 'success',
-        confirmButtonColor: '#16a34a',
-      }).then(() => {
-        handleClear();
-      });
+      try {
+        await clientsApi.create(payload);
+        Swal.fire({
+          title: 'Created!',
+          text: 'New client/customer has been successfully added.',
+          icon: 'success',
+          confirmButtonColor: '#16a34a',
+        }).then(() => {
+          handleClear();
+        });
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'Failed to create client', 'error');
+      }
     }
   };
 
@@ -211,7 +230,7 @@ export default function AddClient() {
                 <SelectField label="Group" name="group" options={['Customer']} formData={formData} onChange={handleChange} />
                 <SelectField label="Party Type" name="partyType" options={['School', 'Shop', 'Agent']} formData={formData} onChange={handleChange} />
                 <SelectField label="Bill by Bill" name="billByBill" options={['Yes', 'No']} formData={formData} onChange={handleChange} />
-                <InputField label="Spl. Price / Disc Group" name="splPriceGroup" formData={formData} onChange={handleChange} />
+                
               </div>
             </div>
 

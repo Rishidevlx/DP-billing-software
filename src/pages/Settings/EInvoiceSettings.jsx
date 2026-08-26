@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Shield, ShieldAlert, Check, Server } from 'lucide-react';
+import { settingsApi } from '../../services/api';
 
 const EInvoiceSettings = () => {
   const [activeTab, setActiveTab] = useState('sandbox');
@@ -23,10 +24,16 @@ const EInvoiceSettings = () => {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem('einvoice_config');
-    if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
-    }
+    settingsApi.getAll().then(data => {
+      const savedConfig = data.find(s => s.setting_key === 'einvoice_config');
+      if (savedConfig && savedConfig.setting_value) {
+        try {
+          setConfig(JSON.parse(savedConfig.setting_value));
+        } catch (e) {
+          console.error('Failed to parse einvoice config');
+        }
+      }
+    }).catch(console.error);
   }, []);
 
   const handleChange = (env, field, value) => {
@@ -48,10 +55,14 @@ const EInvoiceSettings = () => {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    localStorage.setItem('einvoice_config', JSON.stringify(config));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    try {
+      await settingsApi.save('einvoice_config', JSON.stringify(config));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save config', err);
+    }
   };
 
   return (

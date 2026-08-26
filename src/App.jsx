@@ -31,8 +31,11 @@ import SaleSummary from './pages/Reports/SaleSummary';
 import ReportsDashboard from './pages/Reports/ReportsDashboard';
 import CustomerReport from './pages/Reports/CustomerReport';
 import CustomerWiseReport from './pages/Reports/CustomerWiseReport';
-import Transports from './pages/Transport/Transports';
 import EInvoiceSettings from './pages/Settings/EInvoiceSettings';
+import BusinessSettings from './pages/Settings/BusinessSettings';
+import RecycleBin from './pages/Settings/RecycleBin';
+import Users from './pages/Settings/Users';
+import Roles from './pages/Settings/Roles';
 
 import Guidance from './pages/Guidance/Guidance';
 
@@ -40,96 +43,7 @@ import { booksList } from './seedBooks';
 
 function App() {
   useEffect(() => {
-    // Seed initial books if not done
-    if (!localStorage.getItem('seededBooks50')) {
-      const existingBooks = JSON.parse(localStorage.getItem('books') || '[]');
-      let maxId = existingBooks.length > 0 ? Math.max(...existingBooks.map(b => parseInt(b.id) || 0)) : Date.now();
-      
-      const newBooks = booksList.map((b, i) => {
-        maxId++;
-        return {
-          ...b,
-          id: maxId,
-          itemCode: String(maxId),
-          rateMethod: 'Qty',
-          tax: 'Exempt',
-          taxSlab: 'Zero',
-          unit: 'NOS',
-          sellingPriceOn: 'Main Unit'
-        };
-      });
-
-      localStorage.setItem('books', JSON.stringify([...existingBooks, ...newBooks]));
-      localStorage.setItem('seededBooks50', 'true');
-    }
-
-    // Alias Migration
-    if (!localStorage.getItem('aliasMigrationDone1')) {
-      const books = JSON.parse(localStorage.getItem('books') || '[]');
-      
-      const generateAlias = (itemName) => {
-        if (!itemName) return '';
-        let alias = '';
-        const lowerName = itemName.toLowerCase();
-        
-        const numMatch = lowerName.match(/\d+/);
-        if (numMatch) {
-          alias += numMatch[0];
-        }
-
-        if (lowerName.includes('english medium') || /\bem\b/.test(lowerName)) {
-          alias += 'em';
-        } else if (lowerName.includes('tamil medium') || /\btm\b/.test(lowerName)) {
-          alias += 'tm';
-        } else if (lowerName.includes('english')) {
-          alias += 'e';
-        } else if (lowerName.includes('tamil') || lowerName.includes('தமிழ்')) {
-          alias += 't';
-        } else if (lowerName.includes('maths') || lowerName.includes('கணிதம்')) {
-          alias += 'm';
-        } else if (lowerName.includes('science') || lowerName.includes('அறிவியல்')) {
-          alias += 's';
-        } else if (lowerName.includes('social') || lowerName.includes('சமூக')) {
-          alias += 'so';
-        } else {
-          const match = lowerName.match(/[a-z]/);
-          if (match) alias += match[0];
-        }
-        
-        return alias || (numMatch ? numMatch[0] : 'bk');
-      };
-
-      const updatedBooks = books.map(b => {
-        // Only generate alias if it looks like a default code (e.g., 'BK001', '123') or is missing
-        // Wait, the user said "ella book laium neeye antha alais aah add panniru" so let's overwrite it
-        return {
-          ...b,
-          itemCode: generateAlias(b.itemName) || b.itemCode
-        };
-      });
-      
-      localStorage.setItem('books', JSON.stringify(updatedBooks));
-      localStorage.setItem('aliasMigrationDone1', 'true');
-    }
-
-    // Price Migration (adding splPrice2 from seedBooks)
-    if (!localStorage.getItem('priceMigrationDone1')) {
-      const books = JSON.parse(localStorage.getItem('books') || '[]');
-      
-      const updatedBooks = books.map(b => {
-        const seedBook = booksList.find(sb => sb.itemName === b.itemName);
-        if (seedBook && seedBook.splPrice2) {
-          return {
-            ...b,
-            splPrice2: seedBook.splPrice2
-          };
-        }
-        return b;
-      });
-      
-      localStorage.setItem('books', JSON.stringify(updatedBooks));
-      localStorage.setItem('priceMigrationDone1', 'true');
-    }
+    // LocalStorage initialization logic has been moved to database APIs and server migrations.
   }, []);
 
   return (
@@ -177,7 +91,6 @@ function App() {
           <Route path="stocks/report" element={<StockReport />} />
           <Route path="customer/list" element={<CustomerReport />} />
           <Route path="customer/wise-report" element={<CustomerWiseReport />} />
-          <Route path="transport" element={<Transports />} />
           <Route path="reports/receipts" element={<ReceiptPage />} />
           <Route path="reports/receipts/edit/:id" element={<ReceiptPage />} />
           <Route path="reports/all-receipts" element={<AllReceipts />} />
@@ -187,10 +100,13 @@ function App() {
           <Route path="reports/dashboard" element={<ReportsDashboard />} />
           <Route path="reports/payment-pending" element={<PaymentPendingReport />} />
           <Route path="print-ledger" element={<PrintLedger />} />
-          <Route path="settings/business" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Business Settings</div>} />
+          <Route path="settings/business" element={<BusinessSettings />} />
           <Route path="settings/invoice" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Invoice Settings</div>} />
           <Route path="settings/tax" element={<div className="p-4 bg-white dark:bg-[#1E1E2D] dark:text-slate-300 rounded shadow">Tax Settings</div>} />
           <Route path="settings/einvoice" element={<EInvoiceSettings />} />
+          <Route path="settings/recyclebin" element={<RecycleBin />} />
+          <Route path="settings/users" element={<Users />} />
+          <Route path="settings/roles" element={<Roles />} />
           <Route path="guidance/guide" element={<Guidance />} />
         </Route>
       </Routes>

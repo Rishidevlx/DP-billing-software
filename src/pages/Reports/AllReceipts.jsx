@@ -1,7 +1,9 @@
+import { moveToRecycleBin } from '../../utils/recycleBin';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { receiptsApi, clientsApi } from '../../services/api';
 
 export default function AllReceipts() {
   const [receipts, setReceipts] = useState([]);
@@ -12,11 +14,32 @@ export default function AllReceipts() {
     loadReceipts();
   }, []);
 
-  const loadReceipts = () => {
-    const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    // Sort chronologically descending
-    savedReceipts.sort((a, b) => new Date(b.date) - new Date(a.date));
-    setReceipts(savedReceipts);
+  const loadReceipts = async () => {
+    try {
+      const [receiptsData, clientsData] = await Promise.all([
+        receiptsApi.getAll(),
+        clientsApi.getAll()
+      ]);
+      
+      const mapped = receiptsData.map(r => {
+         const customer = clientsData.find(c => c.id === r.customer_id);
+         return {
+           id: r.id,
+           date: r.date,
+           voucherNo: r.receipt_no,
+           customerName: customer ? customer.name : '',
+           amount: r.amount,
+           // Additional fields not strictly in current minimal schema, mapping safely
+           narrationSno: '', 
+           narrationPg: '',
+           narrationDate: ''
+         };
+      });
+      mapped.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setReceipts(mapped);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleDelete = (receipt) => {
@@ -28,30 +51,13 @@ export default function AllReceipts() {
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        // 1. Revert the allocated amounts in bills
-        const savedBills = JSON.parse(localStorage.getItem('bills') || '[]');
-        const updatedBills = savedBills.map(bill => {
-          if (receipt.allocations && receipt.allocations[bill.id]) {
-            const allocatedAmt = receipt.allocations[bill.id];
-            return {
-              ...bill,
-              amountPaid: (parseFloat(bill.amountPaid || 0) - allocatedAmt).toFixed(2)
-            };
-          }
-          return bill;
-        });
-        localStorage.setItem('bills', JSON.stringify(updatedBills));
-
-        // 2. Delete the receipt
-        const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-        const updatedReceipts = savedReceipts.filter(r => r.id !== receipt.id);
-        localStorage.setItem('receipts', JSON.stringify(updatedReceipts));
-
-        setReceipts(updatedReceipts);
-
-        Swal.fire('Deleted!', 'The receipt has been deleted and bill balances updated.', 'success');
+        try {
+          alert('Delete API for Receipts not implemented yet');
+        } catch (e) {
+          console.error(e);
+        }
       }
     });
   };

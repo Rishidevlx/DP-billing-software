@@ -2,15 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Search, Filter, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { clientsApi } from '../../services/api';
 
 export default function ClientsDetails() {
   const navigate = useNavigate();
 
-  // Load Clients from LocalStorage
-  const [clients, setClients] = useState(() => {
-    const saved = localStorage.getItem('clients');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Load Clients from API
+  const [clients, setClients] = useState([]);
+
+  const loadClients = async () => {
+    try {
+      const data = await clientsApi.getAll();
+      setClients(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+  }, []);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +31,7 @@ export default function ClientsDetails() {
   const [cityFilter, setCityFilter] = useState('');
 
   // Filtered Data State
-  const [filteredClients, setFilteredClients] = useState(clients);
+  const [filteredClients, setFilteredClients] = useState([]);
 
   const handleDelete = (id) => {
     Swal.fire({
@@ -31,13 +42,16 @@ export default function ClientsDetails() {
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const updatedClients = clients.filter(c => c.id !== id);
-        setClients(updatedClients);
-        setFilteredClients(updatedClients);
-        localStorage.setItem('clients', JSON.stringify(updatedClients));
-        Swal.fire('Deleted!', 'Client has been deleted.', 'success');
+        try {
+          await clientsApi.delete(id);
+          loadClients();
+          Swal.fire('Deleted!', 'Client has been deleted.', 'success');
+        } catch(e) {
+          console.error(e);
+          Swal.fire('Error', 'Failed to delete client', 'error');
+        }
       }
     });
   };

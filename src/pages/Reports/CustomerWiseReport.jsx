@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Printer } from 'lucide-react';
+import { FileText, Printer, FileDown } from 'lucide-react';
+import { exportHTMLToDoc } from '../../utils/exportToWord';
 import { useReactToPrint } from 'react-to-print';
 
 const parseDate = (dStr) => {
@@ -226,6 +227,12 @@ export default function CustomerWiseReport() {
     setGroupedData(grouped);
   };
 
+  const handleExportWord = () => {
+    if (printRef.current) {
+      exportHTMLToDoc(printRef.current.innerHTML, `Customer_Wise_Report_${dateFrom}_to_${dateTo}`);
+    }
+  };
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Customer_Wise_Report_${dateFrom}_to_${dateTo}`,
@@ -242,14 +249,24 @@ export default function CustomerWiseReport() {
           </div>
         </div>
         
-        <button 
-          onClick={handlePrint}
-          disabled={Object.keys(groupedData).length === 0}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer border-none"
-        >
-          <Printer size={18} />
-          Print Report
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportWord}
+            disabled={Object.keys(groupedData).length === 0}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer border-none"
+          >
+            <FileDown size={18} />
+            Export Word
+          </button>
+          <button 
+            onClick={handlePrint}
+            disabled={Object.keys(groupedData).length === 0}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md font-semibold flex items-center gap-2 transition-colors shadow-sm cursor-pointer border-none"
+          >
+            <Printer size={18} />
+            Print Report
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm mb-6 p-4">

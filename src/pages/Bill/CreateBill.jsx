@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Printer, Trash2 } from 'lucide-react';
+import { Save, Printer, Trash2, RefreshCw } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import PrintInvoice from './PrintInvoice';
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js';
 import { generateEInvoice } from '../../utils/einvoiceApi';
-
-
+import { billsApi, clientsApi, booksApi } from '../../services/api';
 
 export default function CreateBill() {
   const { id } = useParams();
@@ -22,80 +21,82 @@ export default function CreateBill() {
   const [transportsList, setTransportsList] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('clients');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const mapped = parsed.map(c => ({
-        name: c.ledgerName || '',
-        mobile: c.mobileNo || '',
-        school: c.printName || '',
-        address1: c.address || '',
-        address2: c.city || '',
+    // Load clients
+    clientsApi.getAll().then(data => {
+      const mapped = data.map(c => ({
+        id: c.id,
+        name: c.name || '',
+        mobile: c.mobile || '',
+        school: c.school || '',
+        address1: c.address1 || '',
+        address2: c.town || '', // map town to address2/city
         district: c.district || '',
-        phone: c.phoneNo || ''
+        phone: ''
       }));
       setDbClients(mapped);
-    }
+    }).catch(console.error);
 
     // Load books
-    const defaultBooks = [
-      { id: 1, itemCode: 'BK001', hsnCode: '49011010', itemName: "10 அமுதாசுரபி தமிழ்", mrp: "120.00" },
-      { id: 2, itemCode: 'BK002', hsnCode: '49011010', itemName: "8 சமூக அறிவியல்", mrp: "110.00" },
-      { id: 3, itemCode: 'BK003', hsnCode: '49011010', itemName: "8 ச மூ வரைபட பயிற்சி", mrp: "20.00" },
-      { id: 4, itemCode: 'BK004', hsnCode: '49011010', itemName: "8 MAP DRAWING ENGLISH", mrp: "20.00" },
-      { id: 5, itemCode: 'BK005', hsnCode: '49011010', itemName: "9 ச மூ வரைபட பயிற்சி", mrp: "25.00" },
-    ];
-    let savedBooks = localStorage.getItem('books');
-    let parsedBooks = savedBooks ? JSON.parse(savedBooks) : [];
-    if (parsedBooks.length === 0) {
-      localStorage.setItem('books', JSON.stringify(defaultBooks));
-      parsedBooks = defaultBooks;
-    }
-    setBooksList(parsedBooks);
+    booksApi.getAll().then(data => {
+      const mapped = data.map(b => ({
+        id: b.id,
+        itemCode: b.alias_name || '',
+        hsnCode: '',
+        itemName: b.book_name || '',
+        mrp: b.price || '0.00',
+        stock: b.stock || 0
+      }));
+      setBooksList(mapped);
+    }).catch(console.error);
     
     // Load Transports
     const savedTransports = JSON.parse(localStorage.getItem('transports') || '[]');
     setTransportsList(savedTransports);
     
-    // Determine next Bill No
-    const savedBills = localStorage.getItem('bills');
-    const parsed = savedBills ? JSON.parse(savedBills) : [];
-      
-    if (id) {
-      // Edit mode
-      const billToEdit = parsed.find(b => b.id.toString() === id);
-      if (billToEdit) {
-        setIsEditMode(true);
-        setBillInfo(billToEdit.billInfo);
-        setCustomer(billToEdit.customer);
-        setItems(billToEdit.items);
-        if (billToEdit.billSettings) {
-          setBillSettings(prev => ({ ...prev, ...billToEdit.billSettings }));
-        }
-      }
-    } else {
-      // Create mode
-      const lastBillNo = parsed.length > 0 ? (parseInt(parsed[parsed.length - 1].billInfo.billNo) || 0) : 0;
-      const nextNo = String(lastBillNo + 1).padStart(3, '0');
-      
-      const savedDraft = localStorage.getItem('billDraft');
-      if (savedDraft) {
-        try {
-          const draft = JSON.parse(savedDraft);
-          if (draft.billInfo) setBillInfo({ ...draft.billInfo, billNo: nextNo });
-          else setBillInfo(prev => ({ ...prev, billNo: nextNo }));
+    // Load Bills for numbering and editing
+    billsApi.getAll().then(bills => {
+      if (id) {
+        // Edit mode
+        const billToEdit = bills.find(b => b.id.toString() === id);
+        if (billToEdit) {
+          setIsEditMode(true);
+          setBillInfo({
+             billNo: billToEdit.bill_no,
+             date: billToEdit.date,
+             transport: billToEdit.transport,
+             destination: billToEdit.destination,
+             bundles: billToEdit.bundles,
+             lrDate: billToEdit.lr_date || '',
+             lrNo: billToEdit.lr_no || ''
+          });
           
-          if (draft.customer) setCustomer(draft.customer);
-          if (draft.items) setItems(draft.items);
-          if (draft.billSettings) setBillSettings(draft.billSettings);
-        } catch (e) {
-          setBillInfo(prev => ({ ...prev, billNo: nextNo }));
+          if (billToEdit.customer_id) {
+             const cust = dbClients.find(c => c.id === billToEdit.customer_id);
+             if (cust) setCustomer(cust);
+          }
+          
+          if (billToEdit.items && billToEdit.items.length > 0) {
+            setItems(billToEdit.items.map((item, idx) => ({
+               id: idx + 1,
+               book_id: item.book_id,
+               qty: item.qty,
+               rate: item.rate,
+               amount: item.amount,
+               teachersCopy: item.teachers_copy || 0
+            })));
+          }
         }
       } else {
+        // Create mode
+        const lastBillNo = bills.length > 0 ? (parseInt(bills[bills.length - 1].bill_no) || 0) : 0;
+        const nextNo = String(lastBillNo + 1).padStart(3, '0');
         setBillInfo(prev => ({ ...prev, billNo: nextNo }));
       }
-    }
-  }, [id]);
+    }).catch(err => {
+        // Fallback for new bill if api fails
+        if (!id) setBillInfo(prev => ({ ...prev, billNo: '001' }));
+    });
+  }, [id, dbClients.length]);
 
   const [billInfo, setBillInfo] = useState({
     billNo: '001',
@@ -204,16 +205,65 @@ export default function CreateBill() {
     }
   }, [billInfo, customer, items, billSettings, isEditMode]);
 
+  const handleRefresh = () => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'This will clear all currently entered data!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Yes, clear it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const savedBills = localStorage.getItem('bills');
+        const parsed = savedBills ? JSON.parse(savedBills) : [];
+        const lastBillNo = parsed.length > 0 ? (parseInt(parsed[parsed.length - 1].billInfo.billNo) || 0) : 0;
+        const nextNo = String(lastBillNo + 1).padStart(3, '0');
+        
+        setBillInfo({
+          billNo: nextNo,
+          date: new Date().toLocaleDateString('en-GB'),
+          transport: 'DIRECT SALES',
+          destination: '',
+          bundles: '0',
+          lrDate: '',
+          lrNo: '',
+          eWayBillNo: '',
+          isEbill: false,
+          irn: '',
+          ackNo: '',
+          ackDate: '',
+          qrCode: ''
+        });
+
+        setCustomer({
+          name: '', school: '', address1: '', address2: '', district: '', phone: '', mobile: ''
+        });
+
+        setItems([
+          { id: Date.now(), itemCode: '', hsnCode: '', itemName: '', rate: '', qty: '', teachersCopy: '0', amount: '' }
+        ]);
+
+        const savedSettings = localStorage.getItem('defaultBillSettings');
+        if (savedSettings) {
+          try {
+            setBillSettings({ ...JSON.parse(savedSettings), cash: '' });
+          } catch(e) {}
+        } else {
+          setBillSettings({
+            itemDiscount: '', cash: '', discountPercent: '', discountAmount: '', freight: '', roundOff: '', inclTax: false, sendWhatsapp: false, priceType: 'mrp'
+          });
+        }
+      }
+    });
+  };
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Invoice_${billInfo.billNo}`,
   });
 
   const handleSave = async () => {
-    // Save to localStorage
-    const savedBills = localStorage.getItem('bills');
-    const parsedBills = savedBills ? JSON.parse(savedBills) : [];
-    
     // Only save valid items
     const validItems = items.filter(i => i.itemName);
     if (validItems.length === 0) {
@@ -260,51 +310,48 @@ export default function CreateBill() {
       }
     }
 
-    const newBill = {
-      id: isEditMode ? parseInt(id) : Date.now(),
-      billInfo: updatedBillInfo,
-      customer,
-      items: validItems,
-      totals,
-      billSettings
+    const payload = {
+      bill_no: updatedBillInfo.billNo,
+      date: updatedBillInfo.date,
+      customer_id: customer.id || null, // assumes customer has id
+      transport: updatedBillInfo.transport,
+      destination: updatedBillInfo.destination,
+      lr_no: updatedBillInfo.lrNo,
+      lr_date: updatedBillInfo.lrDate,
+      bundles: updatedBillInfo.bundles,
+      gross_amount: totals.grossAmount,
+      discount_percent: billSettings.discountPercent || 0,
+      discount_amount: billSettings.discountAmount || 0,
+      freight: billSettings.freight || 0,
+      round_off: billSettings.roundOff || 0,
+      net_amount: totals.netAmount,
+      created_by: JSON.parse(localStorage.getItem('currentUser') || '{}').name || 'Admin',
+      items: validItems.map(item => {
+        // find book id
+        const book = booksList.find(b => b.itemName === item.itemName && b.itemCode === item.itemCode);
+        return {
+          book_id: book ? book.id : null,
+          qty: item.qty,
+          rate: item.rate,
+          amount: item.amount,
+          teachers_copy: item.teachersCopy || 0
+        };
+      }).filter(item => item.book_id !== null) // ensure book is selected
     };
-    
-    // --- STOCK MANAGEMENT START ---
-    const savedBooks = localStorage.getItem('books');
-    let currentBooks = savedBooks ? JSON.parse(savedBooks) : [];
 
-    if (isEditMode) {
-      const originalBill = parsedBills.find(b => b.id.toString() === id);
-      if (originalBill && originalBill.items) {
-        // Revert previous quantities
-        originalBill.items.forEach(oldItem => {
-          if (!oldItem.itemName) return;
-          const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
-          if (bookIndex !== -1) {
-            currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) + (parseFloat(oldItem.qty) || 0);
-          }
-        });
+    try {
+      if (isEditMode) {
+        // We only have POST currently in the backend for bills API (create)
+        // You might need a PUT if edit is required
+        alert('Editing existing bills on API is not implemented yet.');
+        return;
+      } else {
+        await billsApi.create(payload);
       }
-    }
-
-    // Deduct new quantities
-    validItems.forEach(newItem => {
-      const bookIndex = currentBooks.findIndex(b => b.itemCode === newItem.itemCode && b.itemName === newItem.itemName);
-      if (bookIndex !== -1) {
-        currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) - (parseFloat(newItem.qty) || 0);
-      }
-    });
-
-    localStorage.setItem('books', JSON.stringify(currentBooks));
-    setBooksList(currentBooks); // update local state
-    // --- STOCK MANAGEMENT END ---
-
-    if (isEditMode) {
-      const updatedBills = parsedBills.map(b => b.id.toString() === id ? newBill : b);
-      localStorage.setItem('bills', JSON.stringify(updatedBills));
-    } else {
-      parsedBills.push(newBill);
-      localStorage.setItem('bills', JSON.stringify(parsedBills));
+    } catch (e) {
+      console.error(e);
+      Swal.fire('Error', 'Failed to save bill to database', 'error');
+      return;
     }
 
     Swal.fire({
@@ -389,11 +436,16 @@ export default function CreateBill() {
     }
 
     if (e.key === 'Enter' || e.key === 'ArrowRight') {
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('transport')?.focus();
+        return;
+      }
       if (field === 'itemName' && activeRowIndex === rowIndex) return; // handled above
       
       if (field === 'itemCode' && !items[rowIndex].itemCode && e.key === 'Enter') {
         e.preventDefault();
-        document.getElementById('discountPercent')?.focus();
+        document.getElementById('item-0-itemName')?.focus();
         return;
       }
       
@@ -579,11 +631,11 @@ export default function CreateBill() {
         setCustomer(list[activeClientOptionIndex]);
         setActiveSearchField(null);
         if (type === 'mobile') document.getElementById('clientName').focus();
-        else document.getElementById('transport').focus();
+        else { setTimeout(() => { const el = document.getElementById('item-0-itemName'); if(el) el.focus(); }, 50); }
       } else {
         setActiveSearchField(null);
         if (type === 'mobile') document.getElementById('clientName').focus();
-        else document.getElementById('transport').focus();
+        else { setTimeout(() => { const el = document.getElementById('item-0-itemName'); if(el) el.focus(); }, 50); }
       }
     } else if (e.key === 'Escape') {
       setActiveSearchField(null);
@@ -645,10 +697,10 @@ export default function CreateBill() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col xl:flex-row gap-0">
+      <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col gap-0 mb-4">
         
         {/* LEFT COLUMN - Customer Info */}
-        <div className="xl:w-1/2 p-4 border-b xl:border-b-0 xl:border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#1a1a2e]">
+        <div className="p-4 bg-slate-50 dark:bg-[#1a1a2e]">
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2">BILL TO</h3>
           
           <div className="flex flex-col gap-3">
@@ -719,7 +771,7 @@ export default function CreateBill() {
                               onClick={() => {
                                 setCustomer(c);
                                 setActiveSearchField(null);
-                                document.getElementById('transport').focus();
+                                setTimeout(() => { const el = document.getElementById('item-0-itemName'); if(el) el.focus(); }, 50);
                               }}
                               className={`px-3 py-2 cursor-pointer text-sm ${activeClientOptionIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                             >
@@ -738,7 +790,7 @@ export default function CreateBill() {
                 </div>
               </div>
               {/* E-Bill Toggle */}
-              <div className="col-span-2 md:col-span-1 mt-4 md:mt-0 flex items-center gap-2">
+              <div className="col-span-2 mt-4 md:mt-0 flex items-center gap-2">
                 <input 
                   type="checkbox" 
                   id="isEbill"
@@ -753,7 +805,7 @@ export default function CreateBill() {
 
               {/* E-Bill Info Message */}
               {billInfo.isEbill && (
-                <div className="col-span-1 md:col-span-3 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
+                <div className="col-span-1 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
                   <span className="bg-blue-100 dark:bg-blue-800 p-1 rounded-full">⚡</span>
                   <div>
                     {billInfo.irn ? (
@@ -792,114 +844,7 @@ export default function CreateBill() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN - Bill Info */}
-        <div className="xl:w-1/2 p-4 flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500">Bill No</label>
-            <input 
-              type="text" 
-              value={billInfo.billNo}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-slate-100 dark:bg-[#1a1a2e] text-slate-900 dark:text-white text-sm font-bold cursor-not-allowed"
-              readOnly
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500">Date</label>
-            <input 
-              type="text" 
-              value={billInfo.date}
-              onChange={(e) => setBillInfo({...billInfo, date: e.target.value})}
-              onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('transport').focus(); }}}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1 relative">
-            <label className="text-xs font-semibold text-slate-500">Transport</label>
-            <div onClick={(e) => e.stopPropagation()}>
-              <input 
-                id="transport"
-                type="text" 
-                autoComplete="off"
-                value={billInfo.transport}
-                onChange={handleTransportChange}
-                onKeyDown={handleTransportKeyDown}
-                onFocus={() => { setFilteredTransports(transportsList); setShowTransportDropdown(true); setActiveTransportIndex(0); }}
-                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
-              />
-              {showTransportDropdown && filteredTransports.length > 0 && (
-                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  <ul className="py-1">
-                    {filteredTransports.map((t, i) => {
-                      const tName = typeof t === 'string' ? t : t.name;
-                      const tDest = typeof t === 'string' ? '' : t.destination;
-                      return (
-                        <li 
-                          key={i}
-                          onClick={() => {
-                            setBillInfo(prev => ({ ...prev, transport: tName.toUpperCase(), destination: tDest.toUpperCase() }));
-                            setShowTransportDropdown(false);
-                            document.getElementById('bundles').focus();
-                          }}
-                          className={`px-3 py-2 cursor-pointer text-sm ${activeTransportIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{tName}</span>
-                            {tDest && <span className="text-xs text-slate-500 dark:text-slate-400">{tDest}</span>}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500">Destination</label>
-            <input 
-              id="destination"
-              type="text" 
-              value={billInfo.destination}
-              onChange={(e) => setBillInfo({...billInfo, destination: e.target.value})}
-              onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('bundles').focus(); }}}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500">No of Bundles</label>
-            <input 
-              id="bundles"
-              type="text" 
-              value={billInfo.bundles}
-              onChange={(e) => setBillInfo({...billInfo, bundles: e.target.value})}
-              onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('lrNo').focus(); }}}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500">LR No</label>
-            <input 
-              id="lrNo"
-              type="text" 
-              value={billInfo.lrNo}
-              onChange={(e) => setBillInfo({...billInfo, lrNo: e.target.value})}
-              onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('eWayBillNo').focus(); }}}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-slate-500">E Way Bill No</label>
-            <input 
-              id="eWayBillNo"
-              type="text" 
-              value={billInfo.eWayBillNo}
-              onChange={(e) => setBillInfo({...billInfo, eWayBillNo: e.target.value})}
-              onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('item-0-itemName').focus(); }}}
-              className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm uppercase"
-            />
-          </div>
-        </div>
-      </div>
+              </div>
 
       {/* ITEMS TABLE */}
       <div className="mt-4 bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-visible">
@@ -1035,16 +980,124 @@ export default function CreateBill() {
       
       {/* BOTTOM PANEL (As per Image 2) */}
       <div className="mt-4 bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm flex flex-col md:flex-row p-3 gap-4">
-        {/* Left Side: Summary info */}
-        <div className="md:w-1/2 flex flex-wrap items-center gap-6 text-sm font-semibold text-slate-700 dark:text-slate-300">
+        {/* Left Side: Bill Info & Summary */}
+        <div className="md:w-[60%] flex flex-col gap-4">
+          <div className="bg-slate-50 dark:bg-[#1a1a2e] p-3 rounded border border-slate-200 dark:border-slate-700">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1">BILL INFO</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">Bill No</label>
+                <input 
+                  type="text" 
+                  value={billInfo.billNo}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-slate-100 dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold cursor-not-allowed"
+                  readOnly
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">Date</label>
+                <input 
+                  type="text" 
+                  value={billInfo.date}
+                  onChange={(e) => setBillInfo({...billInfo, date: e.target.value})}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1 relative">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">Transport</label>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input 
+                    id="transport"
+                    type="text" 
+                    autoComplete="off"
+                    value={billInfo.transport}
+                    onChange={handleTransportChange}
+                    onKeyDown={handleTransportKeyDown}
+                    onFocus={() => { setFilteredTransports(transportsList); setShowTransportDropdown(true); setActiveTransportIndex(0); }}
+                    className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
+                  />
+                  {showTransportDropdown && filteredTransports.length > 0 && (
+                    <div className="absolute z-50 bottom-full left-0 w-full mb-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      <ul className="py-1">
+                        {filteredTransports.map((t, i) => {
+                          const tName = typeof t === 'string' ? t : t.name;
+                          const tDest = typeof t === 'string' ? '' : t.destination;
+                          return (
+                            <li 
+                              key={i}
+                              onClick={() => {
+                                setBillInfo(prev => ({ ...prev, transport: tName.toUpperCase(), destination: tDest.toUpperCase() }));
+                                setShowTransportDropdown(false);
+                                document.getElementById('bundles').focus();
+                              }}
+                              className={`px-3 py-1 cursor-pointer text-xs ${activeTransportIndex === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">{tName}</span>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">Destination</label>
+                <input 
+                  id="destination"
+                  type="text" 
+                  value={billInfo.destination}
+                  onChange={(e) => setBillInfo({...billInfo, destination: e.target.value})}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">Bundles</label>
+                <input 
+                  id="bundles"
+                  type="text" 
+                  value={billInfo.bundles}
+                  onChange={(e) => setBillInfo({...billInfo, bundles: e.target.value})}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">LR No</label>
+                <input 
+                  id="lrNo"
+                  type="text" 
+                  value={billInfo.lrNo}
+                  onChange={(e) => setBillInfo({...billInfo, lrNo: e.target.value})}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
+                />
+              </div>
+              <div className="flex flex-col gap-1 md:col-span-3">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">E Way Bill No</label>
+                <input 
+                  id="eWayBillNo"
+                  type="text" 
+                  value={billInfo.eWayBillNo}
+                  onChange={(e) => setBillInfo({...billInfo, eWayBillNo: e.target.value})}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Left Side: Summary info */}
+        <div className="flex flex-wrap items-center gap-6 text-sm font-semibold text-slate-700 dark:text-slate-300">
           <div>Items : <span className="text-red-500">{items.filter(i => i.itemName).length}</span></div>
           <div>Total Qty : <span className="text-red-500">{totals.qty}</span></div>
           <div>Taxable Value : <span className="text-red-500">{totals.grossAmount.toFixed(2)}</span></div>
           <div>GST : <span className="text-red-500">00.00</span></div>
         </div>
 
+        
+        </div>
         {/* Right Side: Totals and Discounts */}
-        <div className="md:w-1/2 bg-slate-100 dark:bg-[#1a1a2e] p-2 rounded border border-slate-200 dark:border-slate-700">
+        <div className="md:w-[40%] bg-slate-100 dark:bg-[#1a1a2e] p-2 rounded border border-slate-200 dark:border-slate-700">
           <div className="grid grid-cols-2 gap-2">
             
             {/* Column 1: Gross, Discounts, Freight, Round Off */}

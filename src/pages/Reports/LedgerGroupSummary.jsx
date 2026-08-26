@@ -147,7 +147,8 @@ export default function LedgerGroupSummary() {
     
     if (selectedGroup === 'Bank Accounts') {
       const receipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-      const uniqueAcNames = [...new Set(receipts.map(r => r.accountName || 'CASH').filter(Boolean))];
+      const allBanks = JSON.parse(localStorage.getItem('banks') || '[]').map(b => typeof b === 'string' ? b : b.name);
+      const uniqueAcNames = [...new Set([...receipts.map(r => r.accountName || 'CASH').filter(Boolean), 'CASH', ...allBanks])];
       setAvailableLedgers(uniqueAcNames.sort());
     } else {
       const clients = JSON.parse(localStorage.getItem('clients') || '[]');

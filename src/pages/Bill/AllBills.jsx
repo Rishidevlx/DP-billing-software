@@ -1,8 +1,10 @@
+import { moveToRecycleBin } from '../../utils/recycleBin';
 import React, { useState, useEffect, useRef } from 'react';
 import { Eye, Printer, Trash2, Search, Edit, Download, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, clientsApi } from '../../services/api';
 import PrintInvoice from './PrintInvoice';
 
 export default function AllBills() {
@@ -22,11 +24,51 @@ export default function AllBills() {
     navigate(`/bill/edit/${bill.id}`);
   };
 
-  useEffect(() => {
-    const savedBills = localStorage.getItem('bills');
-    if (savedBills) {
-      setBills(JSON.parse(savedBills)); // Ascending order (1, 2, 3...)
+  const loadBills = async () => {
+    try {
+      const [billsData, clientsData] = await Promise.all([
+        billsApi.getAll(),
+        clientsApi.getAll()
+      ]);
+      
+      const joinedBills = billsData.map(b => {
+        const customer = clientsData.find(c => c.id === b.customer_id);
+        return {
+          id: b.id,
+          billInfo: {
+            billNo: b.bill_no,
+            date: b.date,
+            transport: b.transport,
+            destination: b.destination,
+            lrNo: b.lr_no,
+            lrDate: b.lr_date,
+            bundles: b.bundles
+          },
+          customer: {
+            id: customer?.id,
+            name: customer?.name || '',
+            school: customer?.school || '',
+            mobile: customer?.mobile || '',
+            address1: customer?.address1 || '',
+            address2: customer?.address2 || '',
+            district: customer?.district || ''
+          },
+          items: b.items,
+          totals: {
+            grossAmount: b.gross_amount,
+            netAmount: b.net_amount,
+            amount: b.net_amount
+          }
+        };
+      });
+      setBills(joinedBills);
+    } catch (e) {
+      console.error(e);
     }
+  };
+
+  useEffect(() => {
+    loadBills();
   }, []);
 
   const handleDelete = (id) => {
@@ -38,32 +80,13 @@ export default function AllBills() {
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const updatedBills = bills.filter(b => b.id !== id);
-        setBills(updatedBills);
-        
-        const rawSaved = JSON.parse(localStorage.getItem('bills') || '[]');
-        const billToDelete = rawSaved.find(b => b.id === id);
-        
-        // --- STOCK MANAGEMENT START ---
-        if (billToDelete && billToDelete.items) {
-          const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
-          billToDelete.items.forEach(oldItem => {
-            if (!oldItem.itemName) return;
-            const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
-            if (bookIndex !== -1) {
-              currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) + (parseFloat(oldItem.qty) || 0);
-            }
-          });
-          localStorage.setItem('books', JSON.stringify(currentBooks));
+        try {
+          alert('Delete API for Bills not implemented yet');
+        } catch(e) {
+          console.error(e);
         }
-        // --- STOCK MANAGEMENT END ---
-
-        const newRaw = rawSaved.filter(b => b.id !== id);
-        localStorage.setItem('bills', JSON.stringify(newRaw));
-        
-        Swal.fire('Deleted!', 'Bill has been deleted.', 'success');
       }
     });
   };

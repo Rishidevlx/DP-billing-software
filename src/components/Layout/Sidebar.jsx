@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
+  Trash2,
   Receipt, 
   Book, 
   Users, 
@@ -15,7 +16,8 @@ import {
   Truck,
   Package,
   PieChart,
-  Printer
+  Printer,
+  Shield
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
@@ -61,12 +63,7 @@ const menuItems = [
       { title: 'Stock Entry', path: '/stocks/entry', icon: <FilePlus size={16} /> },
     ]
   },
-  {
-    title: 'Transport',
-    icon: <Truck size={20} />,
-    path: '/transport',
-  },
-  {
+    {
     title: 'Customer Report',
     icon: <Users size={20} />,
     subItems: [
@@ -93,9 +90,12 @@ const menuItems = [
     icon: <Settings size={20} />,
     subItems: [
       { title: 'Business Settings', path: '/settings/business', icon: <Settings size={16} /> },
+      { title: 'User Management', path: '/settings/users', icon: <Users size={16} /> },
+      { title: 'Role Permissions', path: '/settings/roles', icon: <Shield size={16} /> },
       { title: 'Invoice Settings', path: '/settings/invoice', icon: <FileText size={16} /> },
       { title: 'Tax / GST Settings', path: '/settings/tax', icon: <Receipt size={16} /> },
       { title: 'E-Invoice API', path: '/settings/einvoice', icon: <FileText size={16} /> },
+      { title: 'Recycle Bin', path: '/settings/recyclebin', icon: <Trash2 size={16} /> },
     ]
   },
   {
@@ -108,6 +108,50 @@ const menuItems = [
 ];
 
 export default function Sidebar({ isOpen }) {
+  let currentUser = {};
+  try {
+    currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  } catch(e) {}
+  const perms = currentUser.permissions || {};
+  
+  // Helper to check view permission
+  const canView = (moduleName) => {
+    if (currentUser.role === 'Admin' || currentUser.email === 'admin@dp.com') return true;
+    return perms[moduleName]?.can_view === true;
+  };
+
+  // Filter menu items based on permissions
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.title === 'Dashboard') return canView('Dashboard');
+    if (item.title === 'Bills') return canView('Bills') || canView('Returns');
+    if (item.title === 'Books') return canView('Books');
+    if (item.title === 'Clients') return canView('Clients');
+    if (item.title === 'Stocks') return canView('Stocks');
+    if (item.title === 'Customer Report' || item.title === 'Reports') return canView('Reports');
+    if (item.title === 'Settings') return canView('Settings') || canView('Users') || canView('Roles');
+    if (item.title === 'Guidance') return true;
+    return true;
+  }).map(item => {
+    // If it's a menu with subItems, we also need to filter subItems
+    if (!item.subItems) return item;
+    
+    let filteredSub = item.subItems;
+    if (item.title === 'Bills') {
+      filteredSub = item.subItems.filter(sub => {
+        if (sub.title.includes('Return')) return canView('Returns');
+        return canView('Bills');
+      });
+    }
+    if (item.title === 'Settings') {
+      filteredSub = item.subItems.filter(sub => {
+        if (sub.title === 'User Management') return canView('Users');
+        if (sub.title === 'Role Permissions') return canView('Roles');
+        return canView('Settings');
+      });
+    }
+    
+    return { ...item, subItems: filteredSub };
+  });
   const [expandedMenus, setExpandedMenus] = useState({});
 
   const toggleMenu = (title) => {
@@ -134,9 +178,9 @@ export default function Sidebar({ isOpen }) {
       <div className={`flex-1 py-4 no-scrollbar ${isOpen ? 'overflow-y-auto overflow-x-hidden' : 'overflow-visible'}`}>
         {isOpen && <div className="px-6 mb-2 text-xs font-semibold text-white/50 tracking-wider">MENU</div>}
         
-        <ul className="flex flex-col gap-1 px-3">
-          {menuItems.map((item) => (
-            <li key={item.title} className="relative group">
+        <ul className="py-4 space-y-1">
+          {filteredMenuItems.map((item) => (
+            <li key={item.title} className="group relative">
               {item.subItems ? (
                 // Parent with Submenu
                 <div 

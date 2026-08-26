@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, Search, Plus, Trash2, Edit } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { stocksApi, booksApi } from '../../services/api';
 
 export default function AllStocks() {
   const [stockEntries, setStockEntries] = useState([]);
@@ -12,11 +13,29 @@ export default function AllStocks() {
     loadEntries();
   }, []);
 
-  const loadEntries = () => {
-    const saved = JSON.parse(localStorage.getItem('stock_entries') || '[]');
-    // Sort by date (descending)
-    saved.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-    setStockEntries(saved);
+  const loadEntries = async () => {
+    try {
+      const [entriesData, booksData] = await Promise.all([
+        stocksApi.getAll(),
+        booksApi.getAll()
+      ]);
+      
+      const mapped = entriesData.map(e => {
+         const book = booksData.find(b => b.id === e.book_id);
+         return {
+           id: e.id.toString(),
+           date: e.date,
+           items: [{
+             itemName: book ? book.book_name : 'Unknown',
+             quantity: e.qty
+           }]
+         };
+      });
+      mapped.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      setStockEntries(mapped);
+    } catch(err) {
+      console.error(err);
+    }
   };
 
   const handleDelete = (id) => {
@@ -28,39 +47,12 @@ export default function AllStocks() {
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const entries = JSON.parse(localStorage.getItem('stock_entries') || '[]');
-        const entryToDelete = entries.find(e => e.id === id);
-        
-        if (entryToDelete) {
-          // Reverse the stock in the books array
-          const books = JSON.parse(localStorage.getItem('books') || '[]');
-          
-          const updatedBooks = books.map(book => {
-            const itemInEntry = entryToDelete.items?.find(i => (i.itemName || '').toLowerCase() === (book.itemName || '').toLowerCase());
-            if (itemInEntry) {
-              return {
-                ...book,
-                currentStock: (parseFloat(book.currentStock) || 0) - (parseFloat(itemInEntry.quantity) || 0)
-              };
-            }
-            return book;
-          });
-          
-          localStorage.setItem('books', JSON.stringify(updatedBooks));
-          
-          // Remove the entry
-          const updatedEntries = entries.filter(e => e.id !== id);
-          localStorage.setItem('stock_entries', JSON.stringify(updatedEntries));
-          
-          loadEntries();
-          
-          Swal.fire(
-            'Deleted!',
-            'Stock Entry has been deleted and inventory updated.',
-            'success'
-          );
+        try {
+          alert('Delete API for stocks not implemented yet.');
+        } catch (e) {
+          console.error(e);
         }
       }
     });

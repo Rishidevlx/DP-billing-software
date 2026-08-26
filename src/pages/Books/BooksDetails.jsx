@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Search, Filter, RefreshCw, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { booksApi } from '../../services/api';
 
 export default function BooksDetails() {
   const navigate = useNavigate();
@@ -20,14 +21,22 @@ export default function BooksDetails() {
   };
 
   const sortBooks = (books) => {
-    return [...books].sort((a, b) => extractNumber(a.itemName) - extractNumber(b.itemName));
+    return [...books].sort((a, b) => extractNumber(a.book_name || a.itemName) - extractNumber(b.book_name || b.itemName));
+  };
+
+  const loadBooks = async () => {
+    try {
+      const data = await booksApi.getAll();
+      const sortedBooks = sortBooks(data);
+      setAllBooks(sortedBooks);
+      setFilteredBooks(sortedBooks);
+    } catch (err) {
+      console.error('Failed to load books:', err);
+    }
   };
 
   useEffect(() => {
-    const storedBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    const sortedBooks = sortBooks(storedBooks);
-    setAllBooks(sortedBooks);
-    setFilteredBooks(sortedBooks);
+    loadBooks();
   }, []);
 
   const handleEdit = (id) => {
@@ -143,22 +152,22 @@ export default function BooksDetails() {
               </tr>
             </thead>
             <tbody>
-              {filteredBooks.map((book) => (
+              {filteredBooks.map((book, idx) => (
                 <tr 
-                  key={book.id} 
+                  key={book.id || idx} 
                   onDoubleClick={() => handleEdit(book.id)}
                   onKeyDown={(e) => { if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); handleEdit(book.id); } }}
                   tabIndex={0}
                   className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-[#1E1E2D] transition-colors cursor-pointer outline-none focus:bg-slate-50 dark:focus:bg-[#1E1E2D]"
                 >
                   <td className="p-4"><input type="checkbox" className="rounded border-slate-300" /></td>
-                  <td className="p-4 text-sm font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">{book.itemCode}</td>
-                  <td className="p-4 text-sm text-slate-700 dark:text-slate-200">{book.itemName}</td>
-                  <td className="p-4 text-sm text-slate-600 dark:text-slate-400">{book.group}</td>
-                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.convQty || '-'}</td>
-                  <td className="p-4 text-sm text-slate-600 dark:text-slate-400 text-center">{book.unit || '-'}</td>
-                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.currentStock || '0'}</td>
-                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-right">₹ {book.sellingPrice || '0.00'}</td>
+                  <td className="p-4 text-sm font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">{book.alias_name || book.aliasName || "-"}</td>
+                  <td className="p-4 text-sm text-slate-700 dark:text-slate-200">{book.book_name || book.itemName}</td>
+                  <td className="p-4 text-sm text-slate-600 dark:text-slate-400">{book.subject || book.group || "BOOK"}</td>
+                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.cov || "-"}</td>
+                  <td className="p-4 text-sm text-slate-600 dark:text-slate-400 text-center">{book.unit || "NOS"}</td>
+                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">{book.stock || 0}</td>
+                  <td className="p-4 text-sm font-medium text-slate-700 dark:text-slate-200 text-right">₹ {Number(book.price || book.sellingPrice).toFixed(2)}</td>
                   <td className="p-4 flex items-center justify-end gap-3">
                     <button 
                       onClick={() => handleEdit(book.id)}
@@ -175,7 +184,17 @@ export default function BooksDetails() {
                       <Copy size={18} />
                     </button>
                     <button 
-                      onClick={() => handleDelete(book.id)}
+                      onClick={async () => {
+                         if(window.confirm('Are you sure you want to delete this book?')) {
+                            try {
+                               await booksApi.delete(book.id);
+                               loadBooks();
+                            } catch (e) {
+                               console.error(e);
+                               alert('Failed to delete book');
+                            }
+                         }
+                      }}
                       className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer p-1 rounded transition-colors" 
                       title="Delete"
                     >

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Printer, FileText } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import PrintLedger from './PrintLedger';
+import { clientsApi, billsApi, receiptsApi, returnsApi } from '../../services/api';
 
 export default function LedgerReport() {
   const [clients, setClients] = useState([]);
@@ -31,27 +32,32 @@ export default function LedgerReport() {
   const printRef = useRef();
 
   useEffect(() => {
-    const loadedClients = JSON.parse(localStorage.getItem('clients') || '[]');
-    const loadedBills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const loadedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    const loadedReturns = JSON.parse(localStorage.getItem('returns') || '[]');
+    Promise.all([
+      clientsApi.getAll(),
+      billsApi.getAll(),
+      receiptsApi.getAll(),
+      returnsApi.getAll()
+    ]).then(([loadedClients, loadedBills, loadedReceipts, loadedReturns]) => {
+      // Map API fields if needed for Ledger
+      const mappedClients = loadedClients.map(c => ({...c, ledgerName: c.name}));
+      
+      setClients(mappedClients);
+      setBills(loadedBills);
+      setReceipts(loadedReceipts);
+      setReturns(loadedReturns);
 
-    setClients(loadedClients);
-    setBills(loadedBills);
-    setReceipts(loadedReceipts);
-    setReturns(loadedReturns);
+      const uniqueCities = [...new Set(mappedClients.map(c => c.city).filter(Boolean))];
+      const uniquePartyTypes = [...new Set(mappedClients.map(c => c.partyType).filter(Boolean))];
+      const uniqueGroups = [...new Set(mappedClients.map(c => c.group).filter(Boolean))];
+      const uniqueAcNames = [...new Set(loadedReceipts.map(r => r.payment_mode || 'CASH').filter(Boolean))];
+      
+      if (!uniqueGroups.includes('Customer')) uniqueGroups.push('Customer');
 
-    const uniqueCities = [...new Set(loadedClients.map(c => c.city).filter(Boolean))];
-    const uniquePartyTypes = [...new Set(loadedClients.map(c => c.partyType).filter(Boolean))];
-    const uniqueGroups = [...new Set(loadedClients.map(c => c.group).filter(Boolean))];
-    const uniqueAcNames = [...new Set(loadedReceipts.map(r => r.accountName || 'CASH').filter(Boolean))];
-    
-    if (!uniqueGroups.includes('Customer')) uniqueGroups.push('Customer');
-
-    setCities(uniqueCities);
-    setPartyTypes(uniquePartyTypes);
-    setGroups(uniqueGroups);
-    setAcNames(uniqueAcNames);
+      setCities(uniqueCities);
+      setPartyTypes(uniquePartyTypes);
+      setGroups(uniqueGroups);
+      setAcNames(uniqueAcNames);
+    }).catch(console.error);
   }, []);
 
   const parseDateString = (dateStr) => {
@@ -81,54 +87,50 @@ export default function LedgerReport() {
   }
 
   if (selectedClient && selectedClient.ledgerName) {
-    let clientBills = bills.filter(b => b.customer?.name === selectedClient.ledgerName);
-    let clientReceipts = receipts.filter(r => r.customerName === selectedClient.ledgerName);
-    let clientReturns = returns.filter(rt => rt.customer?.name === selectedClient.ledgerName);
+    let clientBills = bills.filter(b => b.customer_id === selectedClient.id);
+    let clientReceipts = receipts.filter(r => r.customer_id === selectedClient.id);
+    let clientReturns = returns.filter(rt => rt.customer_id === selectedClient.id);
 
     let allTransactions = [];
 
     clientBills.forEach(b => {
        allTransactions.push({
-           dateObj: parseDateString(b.billInfo?.date),
-           dateStr: b.billInfo?.date,
+           dateObj: parseDateString(b.date),
+           dateStr: b.date,
            particulars: 'SALES',
            acName: '-',
            vchType: 'Sales',
-           vchNo: b.billInfo?.billNo,
-           debit: parseFloat(b.totals?.amount) || 0,
+           vchNo: b.bill_no,
+           debit: parseFloat(b.net_amount) || 0,
            credit: 0,
            narration: ''
        });
     });
 
     clientReceipts.forEach(r => {
-       let nar = '';
-       if(r.narrationSno || r.narrationPg || r.narrationDate) {
-           nar = `sno ${r.narrationSno || ''} pg ${r.narrationPg || ''} dated ${r.narrationDate || ''}`.trim();
-       }
        allTransactions.push({
            dateObj: parseDateString(r.date),
            dateStr: parseDateString(r.date) ? parseDateString(r.date).toLocaleDateString('en-GB') : r.date,
            particulars: 'RECEIPT',
-           acName: r.accountName || 'CASH',
+           acName: r.payment_mode || 'CASH',
            vchType: 'Receipt',
-           vchNo: r.voucherNo,
+           vchNo: r.receipt_no,
            debit: 0,
            credit: parseFloat(r.amount) || 0,
-           narration: nar
+           narration: r.remarks || ''
        });
     });
 
     clientReturns.forEach(rt => {
        allTransactions.push({
-           dateObj: parseDateString(rt.returnInfo?.date),
-           dateStr: rt.returnInfo?.date,
+           dateObj: parseDateString(rt.date),
+           dateStr: rt.date,
            particulars: 'SALES RETURN',
            acName: '-',
            vchType: 'Return',
-           vchNo: rt.returnInfo?.returnNo,
+           vchNo: rt.return_no,
            debit: 0,
-           credit: parseFloat(rt.totals?.amount) || 0,
+           credit: parseFloat(rt.net_amount) || 0,
            narration: ''
        });
     });

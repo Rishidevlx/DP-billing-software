@@ -14,11 +14,13 @@ export default function Login() {
   const lottieContainer = useRef(null);
   const { isInstallable, promptInstall } = usePWA();
 
+  
   useEffect(() => {
     if (localStorage.getItem('isAuth') === 'true') {
       navigate('/dashboard');
     }
   }, [navigate]);
+
 
   useEffect(() => {
     const anim = lottie.loadAnimation({
@@ -72,13 +74,25 @@ export default function Login() {
           <h2 className="text-3xl font-semibold text-black mb-2">Welcome Back</h2>
           <p className="text-[#94A3B8] mb-10">Please enter your credentials to login.</p>
           
-          <form className="flex flex-col gap-6" onSubmit={(e) => {
+          <form className="flex flex-col gap-6" onSubmit={async (e) => {
             e.preventDefault();
-            if (email === 'admin@dp.com' && password === 'admin123') {
-              localStorage.setItem('isAuth', 'true');
-              navigate('/dashboard');
-            } else {
-              setError('Invalid email or password');
+            try {
+              const res = await fetch('http://localhost:5000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+              });
+              if (res.ok) {
+                const user = await res.json();
+                localStorage.setItem('isAuth', 'true');
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                navigate('/dashboard');
+              } else {
+                const data = await res.json();
+                setError(data.error || 'Invalid email or password');
+              }
+            } catch (err) {
+              setError('Failed to connect to the server.');
             }
           }}>
             {error && <div className="text-red-500 text-sm text-center">{error}</div>}

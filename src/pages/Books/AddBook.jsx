@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, RefreshCw } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import { booksApi } from '../../services/api';
 
 // Reusable Input Component
 const InputField = ({ label, name, type = "text", placeholder = "", required = false, formData, onChange }) => (
@@ -72,11 +73,21 @@ export default function AddBook() {
 
   useEffect(() => {
     if (isEditMode) {
-      const existingBooks = JSON.parse(localStorage.getItem('books') || '[]');
-      const bookToEdit = existingBooks.find(b => b.id === parseInt(id));
-      if (bookToEdit) {
-        setFormData(bookToEdit);
-      }
+      booksApi.getAll().then(books => {
+        const bookToEdit = books.find(b => b.id === parseInt(id));
+        if (bookToEdit) {
+          // Map backend fields to form fields if needed
+          setFormData({
+            ...bookToEdit,
+            itemCode: bookToEdit.alias_name || '',
+            itemName: bookToEdit.book_name || '',
+            group: bookToEdit.subject || 'BOOK',
+            sellingPrice: bookToEdit.price || '',
+            mrp: bookToEdit.price || '',
+            currentStock: bookToEdit.stock || 0
+          });
+        }
+      });
     }
   }, [id, isEditMode]);
 
@@ -140,32 +151,48 @@ export default function AddBook() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const existingBooks = JSON.parse(localStorage.getItem('books') || '[]');
-    
+    const payload = {
+       book_name: formData.itemName,
+       alias_name: formData.itemCode,
+       subject: formData.group,
+       price: formData.sellingPrice || formData.mrp || 0,
+       stock: formData.currentStock || 0,
+       std: '',
+       medium: ''
+    };
+
     if (isEditMode) {
-      const updatedBooks = existingBooks.map(b => b.id === parseInt(id) ? { ...formData, id: parseInt(id) } : b);
-      localStorage.setItem('books', JSON.stringify(updatedBooks));
-      Swal.fire({
-        title: 'Updated!',
-        text: 'Book details have been successfully updated.',
-        icon: 'success',
-        confirmButtonColor: '#2563eb',
-      }).then(() => {
-        navigate('/books/details');
-      });
+      try {
+        await booksApi.update(id, payload);
+        Swal.fire({
+          title: 'Updated!',
+          text: 'Book details have been successfully updated.',
+          icon: 'success',
+          confirmButtonColor: '#2563eb',
+        }).then(() => {
+          navigate('/books/details');
+        });
+      } catch (err) {
+        console.error(err);
+        alert('Failed to update book');
+      }
     } else {
-      const newBook = { ...formData, id: Date.now() };
-      localStorage.setItem('books', JSON.stringify([...existingBooks, newBook]));
-      Swal.fire({
-        title: 'Created!',
-        text: 'New book has been successfully created.',
-        icon: 'success',
-        confirmButtonColor: '#16a34a',
-      }).then(() => {
-        navigate('/books/details');
-      });
+      try {
+        await booksApi.create(payload);
+        Swal.fire({
+          title: 'Created!',
+          text: 'New book has been successfully created.',
+          icon: 'success',
+          confirmButtonColor: '#16a34a',
+        }).then(() => {
+          navigate('/books/details');
+        });
+      } catch (err) {
+        console.error(err);
+        alert('Failed to create book');
+      }
     }
   };
 

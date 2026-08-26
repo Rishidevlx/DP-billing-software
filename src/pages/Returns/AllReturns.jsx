@@ -1,7 +1,9 @@
+import { moveToRecycleBin } from '../../utils/recycleBin';
 import React, { useState, useEffect } from 'react';
 import { Search, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
+import { returnsApi, clientsApi } from '../../services/api';
 
 export default function AllReturns() {
   const [returns, setReturns] = useState([]);
@@ -13,11 +15,42 @@ export default function AllReturns() {
     navigate(`/returns/edit/${returnNote.id}`);
   };
 
-  useEffect(() => {
-    const savedReturns = localStorage.getItem('returns');
-    if (savedReturns) {
-      setReturns(JSON.parse(savedReturns).reverse()); // newest first
+  const loadReturns = async () => {
+    try {
+      const [returnsData, clientsData] = await Promise.all([
+        returnsApi.getAll(),
+        clientsApi.getAll()
+      ]);
+      
+      const joinedReturns = returnsData.map(r => {
+        const customer = clientsData.find(c => c.id === r.customer_id);
+        const qty = r.items ? r.items.reduce((sum, item) => sum + parseFloat(item.qty || 0), 0) : 0;
+        return {
+          id: r.id,
+          returnInfo: {
+            returnNo: r.return_no,
+            date: r.date,
+          },
+          customer: {
+            id: customer?.id,
+            name: customer?.name || '',
+            mobile: customer?.mobile || '',
+          },
+          totals: {
+            qty: qty,
+            amount: r.net_amount
+          }
+        };
+      });
+      // Newest first
+      setReturns(joinedReturns.reverse());
+    } catch (e) {
+      console.error(e);
     }
+  };
+
+  useEffect(() => {
+    loadReturns();
   }, []);
 
   const handleDelete = (id) => {
@@ -29,33 +62,13 @@ export default function AllReturns() {
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
       confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const updatedReturns = returns.filter(b => b.id !== id);
-        setReturns(updatedReturns);
-        
-        const rawSaved = JSON.parse(localStorage.getItem('returns') || '[]');
-        const returnToDelete = rawSaved.find(b => b.id === id);
-        
-        // --- STOCK MANAGEMENT START ---
-        if (returnToDelete && returnToDelete.items) {
-          const currentBooks = JSON.parse(localStorage.getItem('books') || '[]');
-          returnToDelete.items.forEach(oldItem => {
-            if (!oldItem.itemName) return;
-            const bookIndex = currentBooks.findIndex(b => b.itemCode === oldItem.itemCode && b.itemName === oldItem.itemName);
-            if (bookIndex !== -1) {
-              // Deduct the returned stock back since the return note is deleted
-              currentBooks[bookIndex].currentStock = (parseFloat(currentBooks[bookIndex].currentStock) || 0) - (parseFloat(oldItem.qty) || 0);
-            }
-          });
-          localStorage.setItem('books', JSON.stringify(currentBooks));
+        try {
+          alert('Delete API for Returns not implemented yet');
+        } catch(e) {
+          console.error(e);
         }
-        // --- STOCK MANAGEMENT END ---
-
-        const newRaw = rawSaved.filter(b => b.id !== id);
-        localStorage.setItem('returns', JSON.stringify(newRaw));
-        
-        Swal.fire('Deleted!', 'Credit Note has been deleted.', 'success');
       }
     });
   };

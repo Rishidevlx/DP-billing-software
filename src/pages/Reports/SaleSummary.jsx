@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Printer, Search } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, returnsApi, clientsApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
@@ -92,6 +93,10 @@ export default function SaleSummary() {
   const [transactions, setTransactions] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [totalRecdAmount, setTotalRecdAmount] = useState(0);
+
+  const [allBills, setAllBills] = useState([]);
+  const [allReturns, setAllReturns] = useState([]);
+  const [clients, setClients] = useState([]);
   
   const printRef = useRef();
 
@@ -100,32 +105,46 @@ export default function SaleSummary() {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     setDateFrom(firstDay.toISOString().split('T')[0]);
+
+    Promise.all([
+      billsApi.getAll(),
+      returnsApi.getAll(),
+      clientsApi.getAll()
+    ]).then(([bls, ret, cli]) => {
+      setAllBills(bls);
+      setAllReturns(ret);
+      setClients(cli);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
-    calculateReport();
-  }, [dateFrom, dateTo, searchTerm]);
+    if (allBills.length > 0 || allReturns.length > 0) {
+      calculateReport();
+    }
+  }, [dateFrom, dateTo, searchTerm, allBills, allReturns, clients]);
 
   const calculateReport = () => {
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const returns = JSON.parse(localStorage.getItem('returns') || '[]');
+    const bills = allBills;
+    const returns = allReturns;
 
     const allTransactions = [];
 
     bills.forEach(bill => {
-      const dStr = bill.billInfo?.date || '';
-      const netAmt = parseFloat(bill.totals?.netAmount) || parseFloat(bill.totals?.amount) || 0;
-      const recdAmt = parseFloat(bill.amountPaid) || 0;
-      const payMode = (bill.billSettings?.cash && parseFloat(bill.billSettings.cash) >= netAmt) ? 'CASH' : 'CREDIT';
-      const mobile = bill.customer?.mobile || '';
-      const name = bill.customer?.name || 'Unknown';
+      const dStr = bill.date || '';
+      const netAmt = parseFloat(bill.net_amount) || 0;
+      const recdAmt = parseFloat(bill.amountPaid) || 0; // Note: amountPaid may need separate fetch if tracking payments separately later
+      
+      const customer = clients.find(c => c.id === bill.customer_id) || {};
+      const payMode = 'CREDIT'; // default for API until payment integration
+      const mobile = customer.mobile || '';
+      const name = customer.name || 'Unknown';
       const partyName = mobile ? `${mobile}, ${name}` : name;
 
       allTransactions.push({
         dateRaw: parseDate(dStr),
         dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
         type: 'Sale',
-        vchNo: bill.billInfo?.billNo || '',
+        vchNo: bill.bill_no || '',
         partyName: partyName,
         payMode: payMode,
         netAmount: netAmt,
@@ -134,18 +153,19 @@ export default function SaleSummary() {
     });
 
     returns.forEach(ret => {
-      const dStr = ret.returnInfo?.date || '';
-      const netAmt = parseFloat(ret.totals?.netAmount) || parseFloat(ret.totals?.amount) || 0;
+      const dStr = ret.date || '';
+      const netAmt = parseFloat(ret.net_amount) || 0;
       const recdAmt = 0; // Usually returns don't have direct received amount in this context
-      const mobile = ret.customer?.mobile || '';
-      const name = ret.customer?.name || 'Unknown';
+      const customer = clients.find(c => c.id === ret.customer_id) || {};
+      const mobile = customer.mobile || '';
+      const name = customer.name || 'Unknown';
       const partyName = mobile ? `${mobile}, ${name}` : name;
 
       allTransactions.push({
         dateRaw: parseDate(dStr),
         dateStr: dStr.includes('-') ? dStr.split('-').reverse().join('/') : dStr,
         type: 'Return',
-        vchNo: ret.returnInfo?.returnNo || '',
+        vchNo: ret.return_no || '',
         partyName: partyName,
         payMode: 'RETURN',
         netAmount: -Math.abs(netAmt), // Negative for returns in summary if needed, but the printed format showed positive? Let's keep it positive or negative based on standard. Wait, the printout only shows positive net amounts. If it's a return it might just be listed. Let's make it negative to subtract from total, but display absolute? I will just make it negative.

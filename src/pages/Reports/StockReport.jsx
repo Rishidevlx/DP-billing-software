@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Printer, Search } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { booksApi, billsApi, returnsApi, stocksApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
@@ -91,6 +92,11 @@ export default function StockReport() {
   const [closingStockOnly, setClosingStockOnly] = useState(false);
   const [reportData, setReportData] = useState([]);
   
+  const [allBooks, setAllBooks] = useState([]);
+  const [allBills, setAllBills] = useState([]);
+  const [allReturns, setAllReturns] = useState([]);
+  const [allStocks, setAllStocks] = useState([]);
+  
   const printRef = useRef();
 
   useEffect(() => {
@@ -98,39 +104,53 @@ export default function StockReport() {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
     setDateFrom(firstDay.toISOString().split('T')[0]);
+
+    Promise.all([
+      booksApi.getAll(),
+      billsApi.getAll(),
+      returnsApi.getAll(),
+      stocksApi.getAll()
+    ]).then(([b, bls, ret, stk]) => {
+      setAllBooks(b);
+      setAllBills(bls);
+      setAllReturns(ret);
+      setAllStocks(stk);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
-    calculateReport();
-  }, [dateFrom, dateTo]);
+    if (allBooks.length > 0 || allBills.length > 0) {
+      calculateReport();
+    }
+  }, [dateFrom, dateTo, allBooks, allBills, allReturns, allStocks]);
 
   const calculateReport = () => {
-    const books = JSON.parse(localStorage.getItem('books') || '[]');
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const returns = JSON.parse(localStorage.getItem('returns') || '[]');
-    const stockEntries = JSON.parse(localStorage.getItem('stock_entries') || '[]');
+    const books = allBooks;
+    const bills = allBills;
+    const returns = allReturns;
+    const stockEntries = allStocks;
 
     const allTransactions = [];
 
     stockEntries.forEach(entry => {
-      entry.items?.forEach(item => {
-        allTransactions.push({
-          date: parseDate(entry.date || item.date),
-          type: 'IN',
-          itemCode: item.itemCode,
-          itemName: item.itemName,
-          qty: parseFloat(item.quantity) || 0
-        });
+      const book = books.find(b => b.id === entry.book_id) || {};
+      allTransactions.push({
+        date: parseDate(entry.date),
+        type: 'IN',
+        itemCode: book.alias_name,
+        itemName: book.book_name,
+        qty: parseFloat(entry.qty) || 0
       });
     });
 
     returns.forEach(ret => {
       ret.items?.forEach(item => {
+        const book = books.find(b => b.id === item.book_id) || {};
         allTransactions.push({
-          date: parseDate(ret.returnInfo?.date),
+          date: parseDate(ret.date),
           type: 'IN',
-          itemCode: item.itemCode,
-          itemName: item.itemName,
+          itemCode: book.alias_name,
+          itemName: book.book_name,
           qty: parseFloat(item.qty) || 0
         });
       });
@@ -138,11 +158,12 @@ export default function StockReport() {
 
     bills.forEach(bill => {
       bill.items?.forEach(item => {
+        const book = books.find(b => b.id === item.book_id) || {};
         allTransactions.push({
-          date: parseDate(bill.billInfo?.date),
+          date: parseDate(bill.date),
           type: 'OUT',
-          itemCode: item.itemCode,
-          itemName: item.itemName,
+          itemCode: book.alias_name,
+          itemName: book.book_name,
           qty: parseFloat(item.qty) || 0
         });
       });

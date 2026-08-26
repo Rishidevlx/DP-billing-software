@@ -26,6 +26,12 @@ export default function Navbar({ toggleSidebar }) {
   const notifRef = useRef(null);
   const searchRef = useRef(null);
   const navigate = useNavigate();
+  
+  let currentUser = {};
+  try {
+    currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  } catch (e) {}
+
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -290,8 +296,8 @@ export default function Navbar({ toggleSidebar }) {
               <UserIcon size={16} />
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-tight">Admin User</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Founder</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-tight">{currentUser?.name || 'Admin User'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{currentUser?.role || 'Admin'}</p>
             </div>
             <ChevronDown size={16} className="text-slate-400 dark:text-slate-500 hidden md:block" />
           </div>
@@ -300,8 +306,8 @@ export default function Navbar({ toggleSidebar }) {
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#1E1E2D] rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#151521] md:hidden">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Admin User</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Founder</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{currentUser?.name || 'Admin User'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{currentUser?.role || 'Admin'}</p>
               </div>
               <div className="py-1">
                 <a href="#" className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#0E0D3A] dark:hover:text-white transition-colors">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Printer } from 'lucide-react';
+import { Printer, FileDown } from 'lucide-react';
+import { exportHTMLToDoc } from '../../utils/exportToWord';
 
 const PrintCustomerLabels = React.forwardRef(({ clients, getClientAliases }, ref) => {
   return (
@@ -188,6 +189,12 @@ export default function CustomerReport() {
     return aliases.join(', ');
   };
 
+  const handleExportWord = () => {
+    if (printRef.current) {
+      exportHTMLToDoc(printRef.current.innerHTML, 'Customer_List_with_Address');
+    }
+  };
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `Customer_Address_Labels`,
@@ -304,14 +311,24 @@ export default function CustomerReport() {
             />
             Active List
           </label>
-          <button 
-            onClick={handlePrint}
-            disabled={filteredClients.length === 0}
-            className="px-6 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-800 dark:text-slate-200 text-sm font-bold rounded border border-slate-300 dark:border-slate-600 shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
-          >
-            <Printer size={16} />
-            Show Report
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleExportWord}
+              disabled={filteredClients.length === 0}
+              className="px-6 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 disabled:opacity-50 text-green-800 dark:text-green-100 text-sm font-bold rounded border border-green-300 dark:border-green-700 shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              <FileDown size={16} />
+              Export Word
+            </button>
+            <button 
+              onClick={handlePrint}
+              disabled={filteredClients.length === 0}
+              className="px-6 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 disabled:opacity-50 text-slate-800 dark:text-slate-200 text-sm font-bold rounded border border-slate-300 dark:border-slate-600 shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              <Printer size={16} />
+              Print Report
+            </button>
+          </div>
         </div>
       </div>
 
