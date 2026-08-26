@@ -103,7 +103,6 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               <span className="text-blue-800">BILL TO :</span>
             </div>
             <div className="mt-2 text-slate-900 uppercase">
-              <p>{customer?.name || "THE HEAD MISTRESS,"}</p>
               <p>{customer?.school || "THIYAGARAJA HR SEC SCHOOL"}</p>
               <p>{customer?.address1 || "N.G.G. O. COLONY"}</p>
               <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>
@@ -287,7 +286,6 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               {customer?.mobile && <span className="text-slate-800">Mob. No : {customer.mobile}</span>}
             </div>
             <div className="text-slate-900 uppercase leading-snug">
-              <p>{customer?.name || "THE HEAD MISTRESS,"}</p>
               <p>{customer?.school || "THIYAGARAJA HR SEC SCHOOL"}</p>
               <p>{customer?.address1 || "N.G.G. O. COLONY"}</p>
               <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>

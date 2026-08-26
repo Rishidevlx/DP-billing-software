@@ -65,8 +65,8 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
 
           <div className="mb-6 px-2">
             <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] mb-2 border-b border-[#E0D6C8] pb-1">Billed To</h3>
-            <p className="font-bold text-lg">{customer?.name || "Customer Name"}</p>
-            <p className="text-sm">{customer?.town}, {customer?.district}</p>
+            <p className="font-bold text-lg">{customer?.school || "School Name"}</p>
+            <p className="text-sm">{customer?.address1}, {customer?.district}</p>
             {customer?.mobile && <p className="text-sm">Ph: {customer.mobile}</p>}
           </div>
 
@@ -130,7 +130,7 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
           <div className="w-1/2 pr-4 border-r border-[#E0D6C8] flex flex-col justify-between">
             <div>
                <h4 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] mb-2">Delivery Ticket</h4>
-               <p className="font-bold text-lg text-[#2C3E50]">{customer?.name}</p>
+               <p className="font-bold text-lg text-[#2C3E50]">{customer?.school}</p>
                <p className="text-sm text-[#2C3E50]">{customer?.town} - {customer?.district}</p>
             </div>
             <p className="text-xs italic text-[#7F8C8D]">Invoice Ref: {billInfo?.billNo}</p>

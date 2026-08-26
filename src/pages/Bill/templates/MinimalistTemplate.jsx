@@ -66,8 +66,8 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
 
           <div className="mb-10">
             <p className="text-gray-400 uppercase tracking-widest text-xs mb-2 border-b border-gray-100 pb-2 inline-block">Billed To</p>
-            <p className="font-semibold text-lg mt-2">{customer?.name}</p>
-            <p className="text-gray-600">{customer?.town}, {customer?.district}</p>
+            <p className="font-semibold text-lg mt-2">{customer?.school}</p>
+            <p className="text-gray-600">{customer?.address1}, {customer?.district}</p>
           </div>
 
           {/* Table */}
@@ -127,7 +127,7 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
         <div className="h-[53mm] px-8 py-4 font-sans flex flex-col justify-between bg-gray-50">
           <div className="flex justify-between items-start">
              <div>
-                <p className="font-semibold text-lg">{customer?.name}</p>
+                <p className="font-semibold text-lg">{customer?.school}</p>
                 <p className="text-sm text-gray-500">{customer?.town} - {customer?.district}</p>
              </div>
              <div className="text-right">

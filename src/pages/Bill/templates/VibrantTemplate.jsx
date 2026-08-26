@@ -65,8 +65,8 @@ const VibrantTemplate = forwardRef(({ billData }, ref) => {
           <div className="px-8 flex gap-6 -mt-12 relative z-20 mb-8">
              <div className="flex-1 bg-white p-5 rounded-xl shadow-lg border border-slate-100 border-t-4 border-t-rose-500">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Billed To</p>
-                <p className="font-bold text-slate-800 text-lg">{customer?.name || "Customer Name"}</p>
-                <p className="text-sm text-slate-600">{customer?.town} - {customer?.district}</p>
+                <p className="font-bold text-slate-800 text-lg">{customer?.school || "School Name"}</p>
+                <p className="text-sm text-slate-600">{customer?.address1} - {customer?.district}</p>
                 {customer?.mobile && <p className="text-sm text-slate-600 mt-1">Mob: {customer.mobile}</p>}
              </div>
              <div className="w-[220px] shrink-0 bg-white p-5 rounded-xl shadow-lg border border-slate-100 border-t-4 border-t-orange-400 flex flex-col justify-center">
@@ -141,7 +141,7 @@ const VibrantTemplate = forwardRef(({ billData }, ref) => {
              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
              <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-rose-200 mb-1">Get in Touch</p>
-                <h3 className="font-bold text-lg leading-tight mb-1">{customer?.name}</h3>
+                <h3 className="font-bold text-lg leading-tight mb-1">{customer?.school}</h3>
                 <p className="text-xs text-rose-100">{customer?.town} - {customer?.district}</p>
              </div>
              {billInfo?.isEbill && billInfo?.qrCode && (

@@ -46,8 +46,15 @@ export default function CreateBill() {
           itemCode: b.alias_name || '',
           hsnCode: '',
           itemName: b.book_name || '',
-          mrp: b.price || '0.00',
-          stock: b.stock || 0
+          mrp: b.mrp || b.price || '0.00',
+          price: b.price || '0.00',
+          stock: b.stock || 0,
+          school_rate: b.school_rate || 0,
+          agent_rate: b.agent_rate || 0,
+          customer_rate: b.customer_rate || 0,
+          splPrice1: b.agent_rate || 0,
+          splPrice2: b.school_rate || 0,
+          splPrice3: b.customer_rate || 0
         }));
         setBooksList(mappedBooks);
 

@@ -68,8 +68,8 @@ const ModernTemplate = forwardRef(({ billData }, ref) => {
             {/* Bill To */}
             <div className="flex-1 bg-slate-50 rounded-xl p-5 border border-slate-200">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Billed To</h3>
-              <p className="font-bold text-slate-900 text-base">{customer?.name || "Customer Name"}</p>
-              <p className="text-sm text-slate-600 mt-1">{customer?.town || ""}</p>
+              <p className="font-bold text-slate-900 text-base">{customer?.school || "School Name"}</p>
+              <p className="text-sm text-slate-600 mt-1">{customer?.address1 || ""}</p>
               <p className="text-sm text-slate-600">{customer?.district || ""}</p>
               {customer?.mobile && <p className="text-sm text-slate-600 mt-1">Mob: {customer.mobile}</p>}
             </div>
@@ -150,7 +150,7 @@ const ModernTemplate = forwardRef(({ billData }, ref) => {
           <div className="flex justify-between border-b border-slate-700 pb-2 mb-3">
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Delivery Details</p>
-              <h2 className="text-lg font-bold">{customer?.name || "Customer Name"}</h2>
+              <h2 className="text-lg font-bold">{customer?.school || "School Name"}</h2>
               <p className="text-sm text-slate-300">{customer?.town} - {customer?.district}</p>
               {customer?.mobile && <p className="text-sm text-slate-300">Mob: {customer.mobile}</p>}
             </div>
