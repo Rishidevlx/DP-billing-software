@@ -127,9 +127,12 @@ const initDB = async () => {
         address2 VARCHAR(255),
         town VARCHAR(100),
         district VARCHAR(100),
-        state VARCHAR(100)
+        state VARCHAR(100),
+        party_type VARCHAR(255) DEFAULT 'School'
       );
     `);
+
+    try { await pool.query("ALTER TABLE clients ADD COLUMN party_type VARCHAR(255) DEFAULT 'School'"); } catch(e) {}
 
     // 6. Bills Table
     await pool.query(`
@@ -540,11 +543,11 @@ app.get('/api/clients', async (req, res) => {
 });
 
 app.post('/api/clients', async (req, res) => {
-  const { name, school, mobile, address1, address2, town, district, state } = req.body;
+  const { name, school, mobile, address1, address2, town, district, state, party_type } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO clients (name, school, mobile, address1, address2, town, district, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, school, mobile, address1, address2, town, district, state]
+      'INSERT INTO clients (name, school, mobile, address1, address2, town, district, state, party_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, school, mobile, address1, address2, town, district, state, party_type || 'School']
     );
     res.status(201).json({ id: result.insertId, ...req.body });
   } catch (err) {
@@ -554,11 +557,11 @@ app.post('/api/clients', async (req, res) => {
 
 app.put('/api/clients/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, school, mobile, address1, address2, town, district, state } = req.body;
+  const { name, school, mobile, address1, address2, town, district, state, party_type } = req.body;
   try {
     await pool.query(
-      'UPDATE clients SET name=?, school=?, mobile=?, address1=?, address2=?, town=?, district=?, state=? WHERE id=?',
-      [name, school, mobile, address1, address2, town, district, state, id]
+      'UPDATE clients SET name=?, school=?, mobile=?, address1=?, address2=?, town=?, district=?, state=?, party_type=? WHERE id=?',
+      [name, school, mobile, address1, address2, town, district, state, party_type || 'School', id]
     );
     res.json({ message: 'Client updated successfully' });
   } catch (err) {

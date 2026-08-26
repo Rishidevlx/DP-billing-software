@@ -18,7 +18,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { billsApi, clientsApi, booksApi } from '../../services/api';
+import { booksApi, clientsApi, billsApi, receiptsApi } from '../../services/api';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({

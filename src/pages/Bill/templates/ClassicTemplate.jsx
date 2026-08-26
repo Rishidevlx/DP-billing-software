@@ -103,6 +103,7 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               <span className="text-blue-800">BILL TO :</span>
             </div>
             <div className="mt-2 text-slate-900 uppercase">
+              {customer?.party_type && <p>{customer.party_type}</p>}
               <p>{customer?.school || "THIYAGARAJA HR SEC SCHOOL"}</p>
               <p>{customer?.address1 || "N.G.G. O. COLONY"}</p>
               <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>
@@ -143,9 +144,14 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               </div>
             </div>
 
-            <div className="flex flex-1">
+            <div className="flex border-b border-slate-800 flex-1">
               <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">LR NO</div>
               <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.lrNo || ""}</div>
+            </div>
+            
+            <div className="flex flex-1">
+              <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">E-WAY BILL NO</div>
+              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.eWayBillNo || ""}</div>
             </div>
           </div>
         </div>
@@ -155,11 +161,11 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
             <thead className="w-full table" style={{ tableLayout: 'fixed' }}>
               <tr className="border-b-2 border-slate-800 bg-slate-100 text-blue-800">
                 <th className="w-12 border-r-2 border-slate-800 px-1 py-1">S.No</th>
-                <th className="border-r-2 border-slate-800 px-2 py-1 text-left">DESCRIPTION</th>
-                <th className="w-20 border-r-2 border-slate-800 px-1 py-1">HSN<br/>CODE</th>
-                <th className="w-20 border-r-2 border-slate-800 px-1 py-1">QTY<br/>Nos</th>
-                <th className="w-24 border-r-2 border-slate-800 px-1 py-1">RATE<br/>Rs.</th>
-                <th className="w-32 px-2 py-1 text-right">AMOUNT<br/>Rs. P.</th>
+                <th className="border-r-2 border-slate-800 px-2 py-1 text-left">PARTICULARS</th>
+                <th className="w-20 border-r-2 border-slate-800 px-1 py-1">RATE</th>
+                <th className="w-20 border-r-2 border-slate-800 px-1 py-1">QTY</th>
+                <th className="w-24 border-r-2 border-slate-800 px-1 py-1">TEACHERS<br/>COPY</th>
+                <th className="w-32 px-2 py-1 text-right">AMOUNT</th>
               </tr>
             </thead>
             <tbody className="text-slate-900 flex-1 flex flex-col w-full">
@@ -167,9 +173,9 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
                 <tr key={index} className="w-full table" style={{ tableLayout: 'fixed' }}>
                   <td className="w-12 border-r-2 border-slate-800 px-1 py-1 text-center">{index + 1}</td>
                   <td className="border-r-2 border-slate-800 px-2 py-1">{item.itemName || item.particulars || item.itemDetails || ""}</td>
-                  <td className="w-20 border-r-2 border-slate-800 px-1 py-1 text-center">{item.hsnCode || "4901"}</td>
+                  <td className="w-20 border-r-2 border-slate-800 px-1 py-1 text-center">{Number(item.rate).toFixed(2)}</td>
                   <td className="w-20 border-r-2 border-slate-800 px-1 py-1 text-center">{item.qty}</td>
-                  <td className="w-24 border-r-2 border-slate-800 px-1 py-1 text-center">{Number(item.rate).toFixed(2)}</td>
+                  <td className="w-24 border-r-2 border-slate-800 px-1 py-1 text-center">{item.teachersCopy || '0'}</td>
                   <td className="w-32 text-right px-2 py-1">{Number(item.amount).toFixed(2)}</td>
                 </tr>
               ))}
@@ -319,6 +325,11 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
             <span className="w-28">LR Date</span>
             <span className="mr-2">:</span>
             <span className="text-slate-900">{billInfo?.lrDate || ""}</span>
+          </div>
+          <div className="flex mt-1">
+            <span className="w-28">E-Way Bill No</span>
+            <span className="mr-2">:</span>
+            <span className="text-slate-900 uppercase">{billInfo?.eWayBillNo || ""}</span>
           </div>
           <div className="flex mt-1">
             <span className="w-28">Booking</span>

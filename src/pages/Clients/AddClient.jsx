@@ -163,7 +163,8 @@ export default function AddClient() {
       address2: formData.pinCode,
       town: formData.city,
       district: formData.district,
-      state: ''
+      state: '',
+      party_type: formData.partyType
     };
     
     if (isEditMode) {

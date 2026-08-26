@@ -4,7 +4,7 @@ import { Eye, Printer, Trash2, Search, Edit, Download, X } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
-import { billsApi, clientsApi } from '../../services/api';
+import { billsApi, clientsApi, booksApi } from '../../services/api';
 import PrintInvoice from './PrintInvoice';
 
 export default function AllBills() {
@@ -26,9 +26,10 @@ export default function AllBills() {
 
   const loadBills = async () => {
     try {
-      const [billsData, clientsData] = await Promise.all([
+      const [billsData, clientsData, booksData] = await Promise.all([
         billsApi.getAll(),
-        clientsApi.getAll()
+        clientsApi.getAll(),
+        booksApi.getAll()
       ]);
       
       const joinedBills = billsData.map(b => {
@@ -42,7 +43,8 @@ export default function AllBills() {
             destination: b.destination,
             lrNo: b.lr_no,
             lrDate: b.lr_date,
-            bundles: b.bundles
+            bundles: b.bundles,
+            eWayBillNo: b.e_way_bill_no || ''
           },
           customer: {
             id: customer?.id,
@@ -51,9 +53,17 @@ export default function AllBills() {
             mobile: customer?.mobile || '',
             address1: customer?.address1 || '',
             address2: customer?.address2 || '',
-            district: customer?.district || ''
+            district: customer?.district || '',
+            party_type: customer?.party_type || 'School'
           },
-          items: b.items,
+          items: b.items ? b.items.map(item => {
+            const book = booksData.find(book => book.id === item.book_id);
+            return {
+              ...item,
+              itemName: book ? (book.book_name || book.itemName || book.itemCode || '') : '',
+              teachersCopy: item.teachers_copy || 0
+            };
+          }) : [],
           totals: {
             grossAmount: b.gross_amount,
             netAmount: b.net_amount,

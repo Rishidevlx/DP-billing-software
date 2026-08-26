@@ -37,7 +37,8 @@ export default function CreateBill() {
           address1: c.address1 || '',
           address2: c.town || '',
           district: c.district || '',
-          phone: ''
+          phone: '',
+          party_type: c.party_type || 'School'
         }));
         setDbClients(mappedClients);
 
