@@ -145,7 +145,7 @@ const initDB = async () => {
       );
     `);
     try { await pool.query('ALTER TABLE bills ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP'); } catch(e) {}
-
+    try { await pool.query('ALTER TABLE bills ADD COLUMN amount_paid DECIMAL(10,2) DEFAULT 0'); } catch(e) {}
 
     // 7. Bill Items Table
     await pool.query(`
@@ -211,6 +211,11 @@ const initDB = async () => {
         created_by VARCHAR(100)
       );
     `);
+    try { await pool.query('ALTER TABLE receipts ADD COLUMN shortage DECIMAL(10,2) DEFAULT 0'); } catch(e) {}
+    try { await pool.query('ALTER TABLE receipts ADD COLUMN narration_sno VARCHAR(50)'); } catch(e) {}
+    try { await pool.query('ALTER TABLE receipts ADD COLUMN narration_pg VARCHAR(50)'); } catch(e) {}
+    try { await pool.query('ALTER TABLE receipts ADD COLUMN narration_date VARCHAR(20)'); } catch(e) {}
+    try { await pool.query('ALTER TABLE receipts ADD COLUMN allocations TEXT'); } catch(e) {}
 
     // 11. Stock Entries Table
     await pool.query(`
@@ -615,6 +620,30 @@ app.post('/api/bills', async (req, res) => {
   }
 });
 
+// PATCH to update LR No
+app.patch('/api/bills/:id/lr', async (req, res) => {
+  const { id } = req.params;
+  const { lr_no } = req.body;
+  try {
+    await pool.query('UPDATE bills SET lr_no=? WHERE id=?', [lr_no, id]);
+    res.json({ message: 'LR No updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH to update bill amount_paid
+app.patch('/api/bills/:id/pay', async (req, res) => {
+  const { id } = req.params;
+  const { amount_paid } = req.body;
+  try {
+    await pool.query('UPDATE bills SET amount_paid = amount_paid + ? WHERE id=?', [amount_paid, id]);
+    res.json({ message: 'Bill payment updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT to update a bill
 app.put('/api/bills/:id', async (req, res) => {
   const { id } = req.params;
@@ -708,26 +737,62 @@ app.post('/api/returns', async (req, res) => {
   }
 });
 
+app.delete('/api/returns/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [items] = await pool.query('SELECT * FROM return_items WHERE return_id=?', [id]);
+    for (const item of items) {
+      await pool.query('UPDATE books SET stock = stock - ? WHERE id = ?', [item.qty, item.book_id]);
+    }
+    await pool.query('DELETE FROM return_items WHERE return_id=?', [id]);
+    await pool.query('DELETE FROM returns WHERE id=?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // RECEIPTS API
 // ==========================================
 app.get('/api/receipts', async (req, res) => {
   try {
     const [receipts] = await pool.query('SELECT * FROM receipts');
-    res.json(receipts);
+    const parsedReceipts = receipts.map(r => {
+      let parsedAlloc = {};
+      try {
+        if (typeof r.allocations === 'string') {
+          parsedAlloc = JSON.parse(r.allocations);
+        } else if (r.allocations) {
+          parsedAlloc = r.allocations;
+        }
+      } catch(e) {}
+      return { ...r, allocations: parsedAlloc };
+    });
+    res.json(parsedReceipts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/receipts', async (req, res) => {
-  const { receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by } = req.body;
+  const { receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO receipts (receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by]
+      'INSERT INTO receipts (receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations ? JSON.stringify(allocations) : null]
     );
     res.status(201).json({ id: result.insertId, receipt_no });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/receipts/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM receipts WHERE id=?', [id]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

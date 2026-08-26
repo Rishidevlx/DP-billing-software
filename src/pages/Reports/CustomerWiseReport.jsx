@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Printer, FileDown } from 'lucide-react';
 import { exportHTMLToDoc } from '../../utils/exportToWord';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, clientsApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
@@ -161,34 +162,57 @@ export default function CustomerWiseReport() {
   
   const [groupedData, setGroupedData] = useState({});
   const [allCustomers, setAllCustomers] = useState([]);
+  const [allBills, setAllBills] = useState([]);
   
   const printRef = useRef();
 
   useEffect(() => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    setDateFrom(firstDay.toISOString().split('T')[0]);
+    const fetchData = async () => {
+      try {
+        const [billsData, clientsData] = await Promise.all([
+          billsApi.getAll(),
+          clientsApi.getAll()
+        ]);
+        
+        const mappedBills = billsData.map(b => {
+          const customer = clientsData.find(c => c.id === b.customer_id);
+          return {
+            ...b,
+            billInfo: { billNo: b.bill_no, date: b.date },
+            customer: customer || {},
+            items: b.items || []
+          };
+        });
+        
+        setAllBills(mappedBills);
 
-    // Get all unique customers for the dropdown
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const uniqueCustomers = new Map();
-    bills.forEach(bill => {
-      const mobile = bill.customer?.mobile || '';
-      const name = bill.customer?.name || 'Unknown';
-      const key = `${mobile ? mobile + ',' : ''}${name}`.toUpperCase();
-      if (!uniqueCustomers.has(key)) {
-        uniqueCustomers.set(key, key);
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        setDateFrom(firstDay.toISOString().split('T')[0]);
+
+        const uniqueCustomers = new Map();
+        mappedBills.forEach(bill => {
+          const mobile = bill.customer?.mobile || '';
+          const name = bill.customer?.name || 'Unknown';
+          const key = `${mobile ? mobile + ',' : ''}${name}`.toUpperCase();
+          if (!uniqueCustomers.has(key)) {
+            uniqueCustomers.set(key, key);
+          }
+        });
+        setAllCustomers(Array.from(uniqueCustomers.values()).sort());
+      } catch (err) {
+        console.error(err);
       }
-    });
-    setAllCustomers(Array.from(uniqueCustomers.values()).sort());
+    };
+    fetchData();
   }, []);
 
   useEffect(() => {
     calculateReport();
-  }, [dateFrom, dateTo, selectedCustomer]);
+  }, [dateFrom, dateTo, selectedCustomer, allBills]);
 
   const calculateReport = () => {
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
+    const bills = allBills;
 
     const parsedFrom = dateFrom ? parseDate(dateFrom) : '0000-00-00';
     const parsedTo = dateTo ? parseDate(dateTo) : '9999-12-31';

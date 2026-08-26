@@ -256,11 +256,11 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
           </div>
           <div className="w-1/2 flex flex-col justify-between items-end">
             <h4 className="text-blue-800 font-bold text-sm">For DOLPHIN PUBLICATIONS</h4>
-            <div className="flex flex-col items-center relative">
+            <div className="flex flex-col items-center relative mt-8">
               {digitalSignature && (
-                <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-5 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
+                <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-4 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
               )}
-              <span className="font-bold text-sm mt-6 relative z-10">Authorised Signatory</span>
+              <span className="font-bold text-sm mt-8 relative z-10">Authorised Signatory</span>
             </div>
           </div>
         </div>

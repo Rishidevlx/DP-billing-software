@@ -60,71 +60,86 @@ export default function ReceiptPage() {
 
   // Initialization
   useEffect(() => {
-    // Load clients
-    clientsApi.getAll().then(data => {
-      const mapped = data.map(c => ({
-        id: c.id,
-        ledgerName: c.name || '',
-        mobileNo: c.mobile || ''
-      }));
-      setClients(mapped);
-    }).catch(console.error);
-    
-    // Load bills
-    billsApi.getAll().then(data => {
-      const mapped = data.map(b => ({
-         id: b.id,
-         billInfo: { billNo: b.bill_no, date: b.date },
-         customer: { name: '' }, // we will join this if needed, or rely on customer_id
-         totals: { amount: b.net_amount },
-         amountPaid: b.amount_paid || 0,
-         customer_id: b.customer_id
-      }));
-      setBills(mapped);
-    }).catch(console.error);
+    const fetchData = async () => {
+      try {
+        const [clientsData, billsData, receiptsData] = await Promise.all([
+          clientsApi.getAll(),
+          billsApi.getAll(),
+          receiptsApi.getAll()
+        ]);
 
-    const savedBanks = JSON.parse(localStorage.getItem('banks') || '[]');
-    setBanks(savedBanks);
-    
-    // Load receipts
-    receiptsApi.getAll().then(savedReceipts => {
-      if (id) {
-        const existingReceipt = savedReceipts.find(r => r.id.toString() === id);
-        if (existingReceipt) {
-          setIsEditMode(true);
-          setFormData({
-            voucherNo: existingReceipt.receipt_no || '',
-            date: existingReceipt.date || new Date().toISOString().split('T')[0],
-            accountName: existingReceipt.payment_mode || 'CASH',
-            customerName: '', // Need to map customer ID to name
-            billNo: '',
-            amount: existingReceipt.amount || '',
-            shortage: existingReceipt.shortage || '',
-            narrationSno: '',
-            narrationPg: '',
-            narrationDate: ''
-          });
-          
-          if (existingReceipt.customer_id) {
-             clientsApi.getAll().then(clients => {
-                const c = clients.find(cl => cl.id === existingReceipt.customer_id);
-                if (c) setFormData(prev => ({...prev, customerName: c.name}));
-             });
+        const mappedClients = clientsData.map(c => ({
+          id: c.id,
+          ledgerName: c.name || '',
+          mobileNo: c.mobile || ''
+        }));
+        setClients(mappedClients);
+
+        const mappedBills = billsData.map(b => {
+          const cust = clientsData.find(c => c.id === b.customer_id);
+          return {
+            id: b.id,
+            billInfo: { billNo: b.bill_no, date: b.date },
+            customer: { name: cust ? cust.name : '' },
+            totals: { amount: b.net_amount },
+            amountPaid: b.amount_paid || 0,
+            customer_id: b.customer_id
+          };
+        });
+        setBills(mappedBills);
+
+        const savedBanks = JSON.parse(localStorage.getItem('banks') || '[]');
+        setBanks(savedBanks);
+
+        if (id) {
+          const existingReceipt = receiptsData.find(r => r.id.toString() === id);
+          if (existingReceipt) {
+            setIsEditMode(true);
+            setFormData({
+              voucherNo: existingReceipt.receipt_no || '',
+              date: existingReceipt.date || new Date().toISOString().split('T')[0],
+              accountName: existingReceipt.payment_mode || 'CASH',
+              customerName: '', 
+              billNo: '',
+              amount: existingReceipt.amount || '',
+              shortage: existingReceipt.shortage || '',
+              narrationSno: '',
+              narrationPg: '',
+              narrationDate: ''
+            });
+            
+            if (existingReceipt.customer_id) {
+               const c = clientsData.find(cl => cl.id === existingReceipt.customer_id);
+               if (c) setFormData(prev => ({...prev, customerName: c.name}));
+            }
+            
+            let parsedAlloc = {};
+            try {
+              if (typeof existingReceipt.allocations === 'string') {
+                parsedAlloc = JSON.parse(existingReceipt.allocations);
+              } else if (existingReceipt.allocations) {
+                parsedAlloc = existingReceipt.allocations;
+              }
+            } catch (e) {
+              console.error('Failed to parse allocations', e);
+            }
+            setAllocatedBills(parsedAlloc);
+            setOriginalAllocations(parsedAlloc);
+          } else {
+            Swal.fire('Error', 'Receipt not found', 'error');
+            navigate('/reports/all-receipts');
           }
-          
-          setAllocatedBills({});
-          setOriginalAllocations({});
         } else {
-          Swal.fire('Error', 'Receipt not found', 'error');
-          navigate('/reports/all-receipts');
+          const nextVoucher = (receiptsData.length + 1).toString().padStart(3, '0');
+          setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
         }
-      } else {
-        const nextVoucher = (savedReceipts.length + 1).toString().padStart(3, '0');
-        setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
+      } catch (err) {
+        console.error(err);
+        if (!id) setFormData(prev => ({ ...prev, voucherNo: '001' }));
       }
-    }).catch(err => {
-      if (!id) setFormData(prev => ({ ...prev, voucherNo: '001' }));
-    });
+    };
+
+    fetchData();
   }, [id, navigate]);
 
   // Calculate total pending amount for selected customer
@@ -361,7 +376,12 @@ export default function ReceiptPage() {
       payment_mode: formData.accountName,
       reference_no: '',
       remarks: '',
-      created_by: 'Admin'
+      created_by: 'Admin',
+      shortage: formData.shortage,
+      narration_sno: formData.narrationSno,
+      narration_pg: formData.narrationPg,
+      narration_date: formData.narrationDate,
+      allocations: allocatedBills
     };
 
     try {
@@ -370,6 +390,13 @@ export default function ReceiptPage() {
         return;
       } else {
         await receiptsApi.create(payload);
+        
+        // Update bill amounts in DB
+        for (const [billId, allocatedAmount] of Object.entries(allocatedBills)) {
+          if (allocatedAmount > 0) {
+            await billsApi.pay(billId, allocatedAmount);
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -377,7 +404,7 @@ export default function ReceiptPage() {
       return;
     }
 
-    setLastSavedReceipt(payload);
+    setLastSavedReceipt(formData);
 
     Swal.fire({
       title: 'Success',
@@ -459,7 +486,7 @@ export default function ReceiptPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, accountName: e.target.value }))}
                 className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500 font-bold"
               >
-                {['CASH', ...banks.map(b => typeof b === 'string' ? b : b.name).filter(b => b.toUpperCase() !== 'CASH')].map((bName, i) => (
+                {['CASH', ...banks.map(b => typeof b === 'string' ? b : (b?.name || '')).filter(b => b?.toUpperCase() !== 'CASH')].map((bName, i) => (
                   <option key={i} value={bName}>{bName}</option>
                 ))}
               </select>

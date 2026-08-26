@@ -18,84 +18,91 @@ export default function CreateReturn() {
   const [allBills, setAllBills] = useState([]);
 
   useEffect(() => {
-    // Load clients
-    clientsApi.getAll().then(data => {
-      const mapped = data.map(c => ({
-        id: c.id,
-        name: c.name || '',
-        mobile: c.mobile || '',
-        school: c.school || '',
-        address1: c.address1 || '',
-        address2: c.town || '', 
-        district: c.district || '',
-        phone: ''
-      }));
-      setDbClients(mapped);
-    }).catch(console.error);
+    const fetchData = async () => {
+      try {
+        const [clientsData, booksData, billsData, returnsData] = await Promise.all([
+          clientsApi.getAll(),
+          booksApi.getAll(),
+          billsApi.getAll(),
+          returnsApi.getAll()
+        ]);
 
-    // Load books
-    booksApi.getAll().then(data => {
-      const mapped = data.map(b => ({
-        id: b.id,
-        itemCode: b.alias_name || '',
-        hsnCode: '',
-        itemName: b.book_name || '',
-        mrp: b.price || '0.00',
-        stock: b.stock || 0
-      }));
-      setBooksList(mapped);
-    }).catch(console.error);
-    
-    // Load bills for connecting returns
-    billsApi.getAll().then(data => {
-      const mapped = data.map(b => ({
-         billInfo: { billNo: b.bill_no, date: b.date },
-         customer: { id: b.customer_id }
-      }));
-      setAllBills(mapped);
-    }).catch(console.error);
+        const mappedClients = clientsData.map(c => ({
+          id: c.id,
+          name: c.name || '',
+          mobile: c.mobile || '',
+          school: c.school || '',
+          address1: c.address1 || '',
+          address2: c.town || '', 
+          district: c.district || '',
+          phone: ''
+        }));
+        setDbClients(mappedClients);
 
-    // Determine next Return No
-    returnsApi.getAll().then(returns => {
-      if (id) {
-        // Edit mode
-        const returnToEdit = returns.find(b => b.id.toString() === id);
-        if (returnToEdit) {
-          setIsEditMode(true);
-          setReturnInfo({
-             returnNo: returnToEdit.return_no,
-             date: returnToEdit.date,
-             originalBillNo: '', // Not stored in current schema, ideally should be mapped
-             transport: returnToEdit.transport,
-             reason: 'STOCK RETURN',
-             priceType: 'mrp'
-          });
-          
-          if (returnToEdit.customer_id) {
-             const cust = dbClients.find(c => c.id === returnToEdit.customer_id);
-             if (cust) setCustomer(cust);
+        const mappedBooks = booksData.map(b => ({
+          id: b.id,
+          itemCode: b.alias_name || '',
+          hsnCode: '',
+          itemName: b.book_name || '',
+          mrp: b.price || '0.00',
+          stock: b.stock || 0
+        }));
+        setBooksList(mappedBooks);
+
+        const mappedBills = billsData.map(b => ({
+           billInfo: { billNo: b.bill_no, date: b.date },
+           customer: { id: b.customer_id }
+        }));
+        setAllBills(mappedBills);
+
+        if (id) {
+          // Edit mode
+          const returnToEdit = returnsData.find(b => b.id.toString() === id);
+          if (returnToEdit) {
+            setIsEditMode(true);
+            setReturnInfo({
+               returnNo: returnToEdit.return_no,
+               date: returnToEdit.date,
+               originalBillNo: '',
+               transport: returnToEdit.transport,
+               reason: 'STOCK RETURN',
+               priceType: 'mrp'
+            });
+            
+            if (returnToEdit.customer_id) {
+               const cust = mappedClients.find(c => c.id === returnToEdit.customer_id);
+               if (cust) setCustomer(cust);
+            }
+            
+            if (returnToEdit.items && returnToEdit.items.length > 0) {
+              setItems(returnToEdit.items.map((item, idx) => {
+                 const book = mappedBooks.find(b => b.id === item.book_id);
+                 return {
+                   id: idx + 1,
+                   book_id: item.book_id,
+                   itemName: book ? book.itemName : '',
+                   itemCode: book ? book.itemCode : '',
+                   qty: item.qty,
+                   rate: item.rate,
+                   amount: item.amount
+                 };
+              }));
+            }
           }
-          
-          if (returnToEdit.items && returnToEdit.items.length > 0) {
-            setItems(returnToEdit.items.map((item, idx) => ({
-               id: idx + 1,
-               book_id: item.book_id,
-               qty: item.qty,
-               rate: item.rate,
-               amount: item.amount
-            })));
-          }
+        } else {
+          // Create mode
+          const lastReturnNo = returnsData.length > 0 ? (parseInt(returnsData[returnsData.length - 1].return_no) || 0) : 0;
+          const nextNo = String(lastReturnNo + 1).padStart(3, '0');
+          setReturnInfo(prev => ({ ...prev, returnNo: nextNo }));
         }
-      } else {
-        // Create mode
-        const lastReturnNo = returns.length > 0 ? (parseInt(returns[returns.length - 1].return_no) || 0) : 0;
-        const nextNo = String(lastReturnNo + 1).padStart(3, '0');
-        setReturnInfo(prev => ({ ...prev, returnNo: nextNo }));
+      } catch (err) {
+        console.error(err);
+        if (!id) setReturnInfo(prev => ({ ...prev, returnNo: '001' }));
       }
-    }).catch(err => {
-      if (!id) setReturnInfo(prev => ({ ...prev, returnNo: '001' }));
-    });
-  }, [id, dbClients.length]);
+    };
+    
+    fetchData();
+  }, [id]);
 
   const [returnInfo, setReturnInfo] = useState({
     returnNo: '001',

@@ -125,9 +125,11 @@ const ModernTemplate = forwardRef(({ billData }, ref) => {
                 <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider font-bold">Amount in Words</p>
                 <p className="text-sm font-medium text-slate-800 uppercase">{numberToWords(Math.round(totals?.netAmount || 0))}</p>
               </div>
-              <div className="flex flex-col items-center relative">
-                {digitalSignature && <img src={digitalSignature} alt="Sig" className="absolute bottom-5 max-h-[50px] object-contain opacity-90" />}
-                <span className="font-bold text-sm mt-6 text-slate-800 border-t border-slate-300 pt-2">Authorised Signatory</span>
+              <div className="flex flex-col items-center relative mt-6">
+                {digitalSignature && (
+                  <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-5 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
+                )}
+                <span className="font-bold text-sm mt-8 text-slate-800 border-t border-slate-300 pt-2">Authorised Signatory</span>
               </div>
             </div>
           </div>

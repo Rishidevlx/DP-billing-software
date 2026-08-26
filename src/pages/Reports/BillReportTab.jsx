@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FileText, Printer, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import PrintInvoice from '../Bill/PrintInvoice';
+import { billsApi, clientsApi } from '../../services/api';
 
 export default function BillReportTab() {
   const [fromBill, setFromBill] = useState('');
@@ -58,10 +59,45 @@ export default function BillReportTab() {
     };
   }, [isViewing, filteredBills]);
 
-  const handleShowReport = () => {
+  const handleShowReport = async () => {
     if (!fromBill || !toBill) return;
     
-    const allBills = JSON.parse(localStorage.getItem('bills') || '[]');
+    try {
+      const [billsData, clientsData] = await Promise.all([
+        billsApi.getAll(),
+        clientsApi.getAll()
+      ]);
+      
+      const allBills = billsData.map(b => {
+        const customer = clientsData.find(c => c.id === b.customer_id);
+        return {
+          id: b.id,
+          billInfo: {
+            billNo: b.bill_no,
+            date: b.date,
+            transport: b.transport,
+            destination: b.destination,
+            lrNo: b.lr_no,
+            lrDate: b.lr_date,
+            bundles: b.bundles
+          },
+          customer: {
+            id: customer?.id,
+            name: customer?.name || '',
+            school: customer?.school || '',
+            mobile: customer?.mobile || '',
+            address1: customer?.address1 || '',
+            town: customer?.town || '',
+            district: customer?.district || ''
+          },
+          items: b.items,
+          totals: {
+            grossAmount: b.gross_amount,
+            netAmount: b.net_amount,
+            amount: b.net_amount
+          }
+        };
+      });
     
     const fromNum = parseInt(fromBill, 10);
     const toNum = parseInt(toBill, 10);
@@ -87,6 +123,10 @@ export default function BillReportTab() {
       setIsViewing(true);
     } else {
       alert("No bills found in this range.");
+    }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load bills.");
     }
   };
 

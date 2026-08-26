@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Printer, Search, FileText } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, clientsApi, receiptsApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
@@ -106,10 +107,40 @@ export default function PaymentPendingReport() {
 
   const printRef = useRef();
 
+  const [allData, setAllData] = useState({ clients: [], bills: [], receipts: [] });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [clientsData, billsData, receiptsData] = await Promise.all([
+          clientsApi.getAll(),
+          billsApi.getAll(),
+          receiptsApi.getAll()
+        ]);
+        
+        const mappedBills = billsData.map(b => {
+          const customer = clientsData.find(c => c.id === b.customer_id);
+          return {
+            ...b,
+            id: b.id,
+            billInfo: { billNo: b.bill_no, no: b.bill_no, date: b.date },
+            customer: customer || {},
+            totals: { amount: b.net_amount }
+          };
+        });
+        
+        setAllData({ clients: clientsData, bills: mappedBills, receipts: receiptsData });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
+
   const { flatData, availableDistricts, availableCities } = useMemo(() => {
-    const clients = JSON.parse(localStorage.getItem('clients') || '[]');
-    const allBills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const allReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
+    const clients = allData.clients;
+    const allBills = allData.bills;
+    const allReceipts = allData.receipts;
 
     const parsedUptoDate = parseDate(uptoDate);
 
@@ -207,7 +238,7 @@ export default function PaymentPendingReport() {
       availableDistricts: Array.from(distSet).sort(),
       availableCities: Array.from(citySet).sort()
     };
-  }, [uptoDate, selectedDistrict, selectedCity]);
+  }, [uptoDate, selectedDistrict, selectedCity, searchTerm, allData]);
 
   // Handle Search Filtering
   const searchFilteredData = useMemo(() => {

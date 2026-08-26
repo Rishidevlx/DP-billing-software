@@ -83,9 +83,12 @@ export default function AllBills() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          alert('Delete API for Bills not implemented yet');
+          await billsApi.delete(id);
+          setBills(prev => prev.filter(b => b.id !== id));
+          Swal.fire('Deleted!', 'The bill has been deleted.', 'success');
         } catch(e) {
           console.error(e);
+          Swal.fire('Error!', 'Failed to delete the bill.', 'error');
         }
       }
     });

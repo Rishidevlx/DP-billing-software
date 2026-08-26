@@ -106,8 +106,10 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
               <p className="text-xs italic text-[#7F8C8D] mb-1">Amount in words</p>
               <p className="text-sm font-semibold uppercase">{numberToWords(Math.round(totals?.netAmount || 0))}</p>
             </div>
-            <div className="flex flex-col items-center relative min-w-[150px]">
-              {digitalSignature && <img src={digitalSignature} alt="Sig" className="absolute bottom-6 max-h-[50px] object-contain opacity-90" />}
+            <div className="flex flex-col items-center relative min-w-[150px] mt-6">
+              {digitalSignature && (
+                <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-5 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
+              )}
               <span className="font-serif italic text-sm mt-8 border-t border-[#2C3E50] w-full text-center pt-1">Authorised Signatory</span>
             </div>
           </div>

@@ -18,6 +18,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { billsApi, clientsApi, booksApi } from '../../services/api';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -32,54 +33,74 @@ export default function Dashboard() {
   const [recentBills, setRecentBills] = useState([]);
 
   useEffect(() => {
-    // Load data from local storage
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const clients = JSON.parse(localStorage.getItem('clients') || '[]');
-    const books = JSON.parse(localStorage.getItem('books') || '[]');
+    const fetchData = async () => {
+      try {
+        const [billsData, clientsData, booksData, receiptsData] = await Promise.all([
+          billsApi.getAll(),
+          clientsApi.getAll(),
+          booksApi.getAll(),
+          receiptsApi.getAll()
+        ]);
+        
+        // Structure bills similar to previous localStorage
+        const bills = billsData.map(b => ({
+          id: b.id,
+          billInfo: { billNo: b.bill_no, date: b.date },
+          totals: { amount: b.net_amount },
+          customer: clientsData.find(c => c.id === b.customer_id) || {}
+        })).sort((a, b) => a.id - b.id);
 
-    // Calculate basic stats
-    const totalRevenue = bills.reduce((sum, bill) => sum + (parseFloat(bill.totals?.amount) || 0), 0);
-    const lowStockItems = books.filter(b => parseFloat(b.currentStock || 0) <= parseFloat(b.minStockAlert || 0)).length;
+        const clients = clientsData;
+        const books = booksData;
 
-    setStats({
-      totalBills: bills.length,
-      totalRevenue,
-      totalCustomers: clients.length,
-      totalBooks: books.length,
-      lowStockItems
-    });
+        // Calculate basic stats
+        const totalRevenue = bills.reduce((sum, bill) => sum + (parseFloat(bill.totals?.amount) || 0), 0);
+        const totalCollections = receiptsData.reduce((sum, receipt) => sum + (parseFloat(receipt.amount) || 0), 0);
+        const lowStockItems = books.filter(b => parseFloat(b.stock || 0) <= parseFloat(b.min_stock_alert || 0)).length;
 
-    // Process recent bills
-    setRecentBills(bills.slice(-5).reverse()); // Get last 5 bills
+        setStats({
+          totalBills: bills.length,
+          totalRevenue,
+          totalCollections,
+          totalCustomers: clients.length,
+          totalBooks: books.length,
+          lowStockItems
+        });
 
-    // Process sales data for chart
-    // We will aggregate revenue by date
-    const salesMap = {};
-    bills.forEach(bill => {
-      const date = bill.billInfo?.date; // e.g. "12/08/2026"
-      if (date) {
-        if (!salesMap[date]) salesMap[date] = 0;
-        salesMap[date] += parseFloat(bill.totals?.amount) || 0;
+        // Process recent bills
+        setRecentBills(bills.slice(-5).reverse()); // Get last 5 bills
+
+        // Process sales data for chart
+        const salesMap = {};
+        bills.forEach(bill => {
+          const date = bill.billInfo?.date;
+          if (date) {
+            if (!salesMap[date]) salesMap[date] = 0;
+            salesMap[date] += parseFloat(bill.totals?.amount) || 0;
+          }
+        });
+
+        // Convert map to sorted array
+        const parseDateString = (dateStr) => {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
+          return new Date(0);
+        };
+
+        const chartData = Object.keys(salesMap)
+          .sort((a, b) => parseDateString(a) - parseDateString(b))
+          .slice(-14) // Last 14 active days
+          .map(date => ({
+            date: date.substring(0, 5), // Show DD/MM
+            revenue: salesMap[date]
+          }));
+
+        setSalesData(chartData);
+      } catch (err) {
+        console.error(err);
       }
-    });
-
-    // Convert map to sorted array
-    const parseDateString = (dateStr) => {
-      const parts = dateStr.split('/');
-      if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
-      return new Date(0);
     };
-
-    const chartData = Object.keys(salesMap)
-      .sort((a, b) => parseDateString(a) - parseDateString(b))
-      .slice(-14) // Last 14 active days
-      .map(date => ({
-        date: date.substring(0, 5), // Show DD/MM
-        revenue: salesMap[date]
-      }));
-
-    setSalesData(chartData);
-
+    fetchData();
   }, []);
 
   return (
@@ -92,7 +113,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         
         {/* Total Bills */}
         <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex items-center justify-between">
@@ -102,6 +123,17 @@ export default function Dashboard() {
           </div>
           <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-full flex items-center justify-center">
             <Receipt size={24} />
+          </div>
+        </div>
+
+        {/* Total Collections */}
+        <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Collections</p>
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-white">₹{stats.totalCollections?.toFixed(0) || 0}</h3>
+          </div>
+          <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-full flex items-center justify-center">
+            <CreditCard size={24} />
           </div>
         </div>
 

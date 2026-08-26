@@ -91,8 +91,8 @@ function App() {
           <Route path="stocks/report" element={<StockReport />} />
           <Route path="customer/list" element={<CustomerReport />} />
           <Route path="customer/wise-report" element={<CustomerWiseReport />} />
-          <Route path="reports/receipts" element={<ReceiptPage />} />
-          <Route path="reports/receipts/edit/:id" element={<ReceiptPage />} />
+          <Route path="reports/receipt" element={<ReceiptPage />} />
+          <Route path="reports/receipt/edit/:id" element={<ReceiptPage />} />
           <Route path="reports/all-receipts" element={<AllReceipts />} />
           <Route path="reports/ledger" element={<LedgerReport />} />
           <Route path="reports/item" element={<ItemReport />} />

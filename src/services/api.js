@@ -55,6 +55,16 @@ export const billsApi = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   })),
+  updateLR: async (id, lr_no) => handleResponse(await fetch(`${API_URL}/bills/${id}/lr`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lr_no })
+  })),
+  pay: async (id, amount_paid) => handleResponse(await fetch(`${API_URL}/bills/${id}/pay`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount_paid })
+  })),
   delete: async (id) => handleResponse(await fetch(`${API_URL}/bills/${id}`, { method: 'DELETE' }))
 };
 
@@ -65,7 +75,8 @@ export const returnsApi = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }))
+  })),
+  delete: async (id) => handleResponse(await fetch(`${API_URL}/returns/${id}`, { method: 'DELETE' }))
 };
 
 // --- Receipts API ---
@@ -75,7 +86,8 @@ export const receiptsApi = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }))
+  })),
+  delete: async (id) => handleResponse(await fetch(`${API_URL}/receipts/${id}`, { method: 'DELETE' }))
 };
 
 // --- Stocks API ---

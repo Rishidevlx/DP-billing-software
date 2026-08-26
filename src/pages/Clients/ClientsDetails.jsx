@@ -13,7 +13,16 @@ export default function ClientsDetails() {
   const loadClients = async () => {
     try {
       const data = await clientsApi.getAll();
-      setClients(data);
+      const mappedClients = data.map(c => ({
+        ...c,
+        ledgerName: c.name || '',
+        mobileNo: c.mobile || '',
+        city: c.town || '',
+        group: 'Customer',
+        partyType: 'School',
+        badDebtor: false
+      }));
+      setClients(mappedClients);
     } catch (e) {
       console.error(e);
     }

@@ -3,6 +3,7 @@ import { Search, X, Save } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
 import PrintInvoice from './PrintInvoice';
+import { billsApi, clientsApi } from '../../services/api';
 
 export default function LRDetails() {
   const [bills, setBills] = useState([]);
@@ -23,11 +24,54 @@ export default function LRDetails() {
     documentTitle: selectedBill ? `Invoice_${selectedBill.billInfo?.billNo}` : 'Invoice',
   });
 
-  useEffect(() => {
-    const savedBills = localStorage.getItem('bills');
-    if (savedBills) {
-      setBills(JSON.parse(savedBills).reverse());
+  const loadBills = async () => {
+    try {
+      const [billsData, clientsData] = await Promise.all([
+        billsApi.getAll(),
+        clientsApi.getAll()
+      ]);
+      
+      const joinedBills = billsData.map(b => {
+        const customer = clientsData.find(c => c.id === b.customer_id);
+        return {
+          id: b.id,
+          billInfo: {
+            billNo: b.bill_no,
+            date: b.date,
+            transport: b.transport,
+            destination: b.destination,
+            lrNo: b.lr_no,
+            lrDate: b.lr_date,
+            bundles: b.bundles
+          },
+          customer: {
+            id: customer?.id,
+            name: customer?.name || '',
+            school: customer?.school || '',
+            mobile: customer?.mobile || '',
+            address1: customer?.address1 || '',
+            town: customer?.town || '',
+            district: customer?.district || ''
+          },
+          items: b.items,
+          totals: {
+            grossAmount: b.gross_amount,
+            netAmount: b.net_amount,
+            amount: b.net_amount
+          }
+        };
+      });
+      
+      // Sort by descending id (newest first)
+      joinedBills.sort((a, b) => b.id - a.id);
+      setBills(joinedBills);
+    } catch (e) {
+      console.error(e);
     }
+  };
+
+  useEffect(() => {
+    loadBills();
   }, []);
 
   const handleRowAction = (bill) => {
@@ -40,28 +84,27 @@ export default function LRDetails() {
     }, 100);
   };
 
-  const handleSaveLR = (e) => {
+  const handleSaveLR = async (e) => {
     if (e) e.preventDefault();
     if (!selectedBill) return;
 
-    const updatedBill = {
-      ...selectedBill,
-      billInfo: {
-        ...selectedBill.billInfo,
-        lrNo: lrNoInput
-      }
-    };
+    try {
+      // Update in DB
+      await billsApi.updateLR(selectedBill.id, lrNoInput);
+      
+      const updatedBill = {
+        ...selectedBill,
+        billInfo: {
+          ...selectedBill.billInfo,
+          lrNo: lrNoInput
+        }
+      };
 
-    const updatedBills = bills.map(b => b.id === selectedBill.id ? updatedBill : b);
-    setBills(updatedBills);
-    
-    // Also update raw localStorage
-    const rawSaved = JSON.parse(localStorage.getItem('bills') || '[]');
-    const newRaw = rawSaved.map(b => b.id === selectedBill.id ? updatedBill : b);
-    localStorage.setItem('bills', JSON.stringify(newRaw));
-    
-    setSelectedBill(updatedBill); // Ensure print preview has updated data
-    setIsModalOpen(false);
+      const updatedBills = bills.map(b => b.id === selectedBill.id ? updatedBill : b);
+      setBills(updatedBills);
+      
+      setSelectedBill(updatedBill); // Ensure print preview has updated data
+      setIsModalOpen(false);
 
     Swal.fire({
       title: 'LR No Updated!',
@@ -76,6 +119,10 @@ export default function LRDetails() {
         handlePrint();
       }
     });
+    } catch (error) {
+      console.error(error);
+      Swal.fire('Error', `Failed to update LR No: ${error.message}`, 'error');
+    }
   };
 
   const parseDate = (dateStr) => {

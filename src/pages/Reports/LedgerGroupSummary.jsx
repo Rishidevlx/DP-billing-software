@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { FileText, Printer, Search } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, clientsApi, receiptsApi, returnsApi, banksApi } from '../../services/api';
 
 const parseDateString = (dateStr) => {
   if (!dateStr) return null;
@@ -125,20 +126,65 @@ export default function LedgerGroupSummary() {
   
   const printRef = useRef();
 
+  const [allData, setAllData] = useState({ clients: [], bills: [], receipts: [], returns: [], banks: [] });
+
   useEffect(() => {
-    const now = new Date();
-    setDateFrom(now.toISOString().split('T')[0]);
+    const fetchData = async () => {
+      try {
+        const [clientsData, billsData, receiptsData, returnsData, banksData] = await Promise.all([
+          clientsApi.getAll(),
+          billsApi.getAll(),
+          receiptsApi.getAll(),
+          returnsApi.getAll(),
+          banksApi.getAll()
+        ]);
+        
+        const mappedBills = billsData.map(b => {
+          const customer = clientsData.find(c => c.id === b.customer_id);
+          return {
+            ...b,
+            billInfo: { billNo: b.bill_no, date: b.date },
+            customer: customer || {},
+            totals: { amount: b.net_amount }
+          };
+        });
 
-    const clients = JSON.parse(localStorage.getItem('clients') || '[]');
-    const receipts = JSON.parse(localStorage.getItem('receipts') || '[]');
+        const mappedClients = clientsData.map(c => ({
+          ...c,
+          ledgerName: c.name,
+          group: c.group_name || 'Customer'
+        }));
+        
+        const mappedReceipts = receiptsData.map(r => {
+          const customer = clientsData.find(c => c.id === r.customer_id);
+          return {
+            ...r,
+            customerName: customer ? customer.name : '',
+            accountName: r.payment_mode || 'CASH'
+          };
+        });
 
-    // Get unique client groups
-    const clientGroups = [...new Set(clients.map(c => c.group).filter(Boolean))];
-    if (!clientGroups.includes('Customer')) clientGroups.push('Customer');
-    
-    // Add Bank Accounts manually as it's derived from receipts
-    const allGroups = ['Bank Accounts', ...clientGroups].sort();
-    setAvailableGroups(allGroups);
+        setAllData({
+          clients: mappedClients,
+          bills: mappedBills,
+          receipts: mappedReceipts,
+          returns: returnsData,
+          banks: banksData
+        });
+
+        const now = new Date();
+        setDateFrom(now.toISOString().split('T')[0]);
+
+        const clientGroups = [...new Set(mappedClients.map(c => c.group).filter(Boolean))];
+        if (!clientGroups.includes('Customer')) clientGroups.push('Customer');
+        
+        const allGroups = ['Bank Accounts', ...clientGroups].sort();
+        setAvailableGroups(allGroups);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Update available ledgers when group changes
@@ -146,26 +192,26 @@ export default function LedgerGroupSummary() {
     setSelectedLedger('ALL'); // Reset ledger when group changes
     
     if (selectedGroup === 'Bank Accounts') {
-      const receipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-      const allBanks = JSON.parse(localStorage.getItem('banks') || '[]').map(b => typeof b === 'string' ? b : b.name);
+      const receipts = allData.receipts;
+      const allBanks = allData.banks.map(b => typeof b === 'string' ? b : b.name);
       const uniqueAcNames = [...new Set([...receipts.map(r => r.accountName || 'CASH').filter(Boolean), 'CASH', ...allBanks])];
       setAvailableLedgers(uniqueAcNames.sort());
     } else {
-      const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+      const clients = allData.clients;
       const groupClients = clients.filter(c => c.group === selectedGroup).map(c => c.ledgerName).filter(Boolean);
       setAvailableLedgers([...new Set(groupClients)].sort());
     }
-  }, [selectedGroup]);
+  }, [selectedGroup, allData]);
 
   useEffect(() => {
     calculateReport();
   }, [dateFrom, dateTo, selectedGroup, selectedLedger]);
 
   const calculateReport = () => {
-    const clients = JSON.parse(localStorage.getItem('clients') || '[]');
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const receipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    const returns = JSON.parse(localStorage.getItem('returns') || '[]');
+    const clients = allData.clients;
+    const bills = allData.bills;
+    const receipts = allData.receipts;
+    const returns = allData.returns;
 
     let fromDateObj = dateFrom ? new Date(dateFrom) : null;
     if(fromDateObj) fromDateObj.setHours(0,0,0,0);

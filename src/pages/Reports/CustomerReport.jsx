@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Printer, FileDown } from 'lucide-react';
 import { exportHTMLToDoc } from '../../utils/exportToWord';
+import { billsApi, clientsApi, receiptsApi, booksApi } from '../../services/api';
 
 const PrintCustomerLabels = React.forwardRef(({ clients, getClientAliases }, ref) => {
   return (
@@ -50,6 +51,7 @@ export default function CustomerReport() {
   const [clients, setClients] = useState([]);
   const [bills, setBills] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [books, setBooks] = useState([]);
   
   // Filter States
   const [selectedType, setSelectedType] = useState('ALL');
@@ -64,12 +66,42 @@ export default function CustomerReport() {
   const printRef = useRef();
 
   useEffect(() => {
-    const savedClients = JSON.parse(localStorage.getItem('clients') || '[]');
-    setClients(savedClients);
-    const savedBills = JSON.parse(localStorage.getItem('bills') || '[]');
-    setBills(savedBills);
-    const savedReceipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    setReceipts(savedReceipts);
+    const fetchData = async () => {
+      try {
+        const [clientsData, billsData, receiptsData, booksData] = await Promise.all([
+          clientsApi.getAll(),
+          billsApi.getAll(),
+          receiptsApi.getAll(),
+          booksApi.getAll()
+        ]);
+        
+        // Map clients to match expected structure
+        const mappedClients = clientsData.map(c => ({
+          ...c,
+          ledgerName: c.name,
+          city: c.town,
+          phoneNo: c.phone || '',
+          mobileNo: c.mobile || '',
+          address: [c.address1, c.address2].filter(Boolean).join(', '),
+          district: c.district || ''
+        }));
+        
+        // Map bills to match expected structure
+        const mappedBills = billsData.map(b => ({
+          ...b,
+          billInfo: { billNo: b.bill_no, date: b.date },
+          totals: { amount: b.net_amount }
+        }));
+        
+        setClients(mappedClients);
+        setBills(mappedBills);
+        setReceipts(receiptsData);
+        setBooks(booksData);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
   }, []);
 
   // Unique options for dropdowns
@@ -168,8 +200,6 @@ export default function CustomerReport() {
   }, [clients, selectedType, selectedPartyType, isAllPartyType, selectedRepType, selectedOptions, isAllSelected, isActiveList, bills, currentYear, customerPendingMap]);
 
   const getClientAliases = (clientName) => {
-    if (selectedType === 'PAYMENT PENDING') return '';
-    
     const clientBills = bills.filter(b => 
       b.customer?.name === clientName && 
       b.billInfo?.date?.includes(currentYear.toString())
@@ -180,8 +210,12 @@ export default function CustomerReport() {
     const aliases = [];
     clientBills.forEach(b => {
       b.items?.forEach(item => {
-        if (item.itemCode && !aliases.includes(item.itemCode)) {
-          aliases.push(item.itemCode);
+        if (item.book_id) {
+          const book = books.find(book => book.id === item.book_id);
+          const alias = book?.alias_name;
+          if (alias && !aliases.includes(alias)) {
+            aliases.push(alias);
+          }
         }
       });
     });

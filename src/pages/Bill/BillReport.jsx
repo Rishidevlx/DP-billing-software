@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Printer, FileText, X } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, clientsApi } from '../../services/api';
 
 // The hidden print component for the label
 const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
@@ -10,10 +11,10 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
   const clientName = bill.customer?.printName || bill.customer?.ledgerName || bill.customer?.name || '';
   
   // Format the TO address based on client details directly from customer object
-  const toAddress = bill.customer?.address || '';
-  const toCity = bill.customer?.city || '';
+  const toSchool = bill.customer?.school || '';
+  const toAddress1 = bill.customer?.address1 || '';
+  const toTown = bill.customer?.town || '';
   const toDistrict = bill.customer?.district || '';
-  const toPinCode = bill.customer?.pinCode || '';
   const toMobile = bill.customer?.mobileNo || bill.customer?.mobile || '';
 
   return (
@@ -59,11 +60,9 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
                   TO :
                 </p>
                 <p className="text-lg">{isLocalTransport ? (labelData.tamilName || clientName) : clientName}</p>
-                {toAddress && <p>{isLocalTransport ? (labelData.tamilAddress || toAddress) : toAddress}</p>}
-                <p>
-                  {isLocalTransport ? (labelData.tamilCity || toCity) : toCity} 
-                  {toPinCode ? ` - ${toPinCode}` : ''}
-                </p>
+                {toSchool && <p>{isLocalTransport ? (labelData.tamilSchool || toSchool) : toSchool}</p>}
+                {toAddress1 && <p>{isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1}</p>}
+                {toTown && <p>{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
                 {toDistrict && <p>{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
                 
                 <p className="pt-2 flex gap-2 text-lg">
@@ -125,27 +124,94 @@ export default function BillReport() {
     bundles: '',
     isLocalTransport: false,
     tamilName: '',
-    tamilAddress: '',
-    tamilCity: '',
+    tamilSchool: '',
+    tamilAddress1: '',
+    tamilTown: '',
     tamilDistrict: ''
   });
 
   const printRef = useRef();
 
   useEffect(() => {
-    const savedBills = JSON.parse(localStorage.getItem('bills') || '[]');
-    // Sort by descending id (newest first)
-    savedBills.sort((a, b) => b.id - a.id);
-    setBills(savedBills);
+    const loadBills = async () => {
+      try {
+        const [billsData, clientsData] = await Promise.all([
+          billsApi.getAll(),
+          clientsApi.getAll()
+        ]);
+        
+        const joinedBills = billsData.map(b => {
+          const customer = clientsData.find(c => c.id === b.customer_id);
+          return {
+            id: b.id,
+            billInfo: {
+              billNo: b.bill_no,
+              date: b.date,
+              transport: b.transport,
+              destination: b.destination,
+              lrNo: b.lr_no,
+              lrDate: b.lr_date,
+              bundles: b.bundles
+            },
+            customer: {
+              id: customer?.id,
+              name: customer?.name || '',
+              school: customer?.school || '',
+              mobile: customer?.mobile || '',
+              address1: customer?.address1 || '',
+              town: customer?.town || '',
+              district: customer?.district || ''
+            },
+            items: b.items,
+            totals: {
+              grossAmount: b.gross_amount,
+              netAmount: b.net_amount,
+              amount: b.net_amount
+            }
+          };
+        });
+        
+        // Sort by descending id (newest first)
+        joinedBills.sort((a, b) => b.id - a.id);
+        setBills(joinedBills);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    
+    loadBills();
   }, []);
+
+  const tamilDictionary = {
+    "north": "வடக்கு",
+    "south": "தெற்கு",
+    "east": "கிழக்கு",
+    "west": "மேற்கு",
+    "street": "தெரு",
+    "st": "தெரு",
+    "road": "சாலை",
+    "nagar": "நகர்",
+    "colony": "காலனி",
+    "district": "மாவட்டம்",
+    "dt": "மாவட்டம்",
+    "tk": "தாலுகா",
+    "taluk": "தாலுகா"
+  };
 
   // Function to transliterate text to Tamil using Google Input Tools API
   const translateToTamil = async (text) => {
     if (!text) return '';
     const words = text.split(' ');
     const translatedWords = await Promise.all(words.map(async (word) => {
-      // Don't translate numbers or special characters if it's just a number
-      if (/^[\d-]+$/.test(word)) return word;
+      // Don't translate words that contain digits (like 2/86, 12A)
+      if (/\d/.test(word)) return word;
+      
+      // Check dictionary for common words
+      const lowerWord = word.toLowerCase().replace(/[^a-z]/g, '');
+      if (tamilDictionary[lowerWord]) {
+        return tamilDictionary[lowerWord];
+      }
+      
       try {
         const response = await fetch(`https://inputtools.google.com/request?text=${word}&itc=ta-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`);
         const data = await response.json();
@@ -167,22 +233,25 @@ export default function BillReport() {
     if (checked && selectedBill) {
       // Translate address fields
       const clientName = selectedBill.customer?.printName || selectedBill.customer?.ledgerName || selectedBill.customer?.name || '';
-      const toAddress = selectedBill.customer?.address || '';
-      const toCity = selectedBill.customer?.city || '';
+      const toSchool = selectedBill.customer?.school || '';
+      const toAddress1 = selectedBill.customer?.address1 || '';
+      const toTown = selectedBill.customer?.town || '';
       const toDistrict = selectedBill.customer?.district || '';
 
-      const [tName, tAddress, tCity, tDistrict] = await Promise.all([
+      const [tName, tSchool, tAddress1, tTown, tDistrict] = await Promise.all([
         translateToTamil(clientName),
-        translateToTamil(toAddress),
-        translateToTamil(toCity),
+        translateToTamil(toSchool),
+        translateToTamil(toAddress1),
+        translateToTamil(toTown),
         translateToTamil(toDistrict)
       ]);
 
       setLabelData(prev => ({
         ...prev,
         tamilName: tName,
-        tamilAddress: tAddress,
-        tamilCity: tCity,
+        tamilSchool: tSchool,
+        tamilAddress1: tAddress1,
+        tamilTown: tTown,
         tamilDistrict: tDistrict
       }));
     }
@@ -201,7 +270,7 @@ export default function BillReport() {
   const openPrintModal = (bill) => {
     setSelectedBill(bill);
     // Auto-fill from bill details
-    const dest = bill.billInfo?.destination || bill.customer?.city || bill.customer?.district || '';
+    const dest = bill.billInfo?.destination || bill.customer?.town || bill.customer?.district || '';
     const trans = bill.billInfo?.transport || '';
     const bndls = bill.billInfo?.bundles || '';
     

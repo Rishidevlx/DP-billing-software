@@ -21,82 +21,97 @@ export default function CreateBill() {
   const [transportsList, setTransportsList] = useState([]);
 
   useEffect(() => {
-    // Load clients
-    clientsApi.getAll().then(data => {
-      const mapped = data.map(c => ({
-        id: c.id,
-        name: c.name || '',
-        mobile: c.mobile || '',
-        school: c.school || '',
-        address1: c.address1 || '',
-        address2: c.town || '', // map town to address2/city
-        district: c.district || '',
-        phone: ''
-      }));
-      setDbClients(mapped);
-    }).catch(console.error);
+    const fetchData = async () => {
+      try {
+        const [clientsData, booksData, bills] = await Promise.all([
+          clientsApi.getAll(),
+          booksApi.getAll(),
+          billsApi.getAll()
+        ]);
+        
+        const mappedClients = clientsData.map(c => ({
+          id: c.id,
+          name: c.name || '',
+          mobile: c.mobile || '',
+          school: c.school || '',
+          address1: c.address1 || '',
+          address2: c.town || '',
+          district: c.district || '',
+          phone: ''
+        }));
+        setDbClients(mappedClients);
 
-    // Load books
-    booksApi.getAll().then(data => {
-      const mapped = data.map(b => ({
-        id: b.id,
-        itemCode: b.alias_name || '',
-        hsnCode: '',
-        itemName: b.book_name || '',
-        mrp: b.price || '0.00',
-        stock: b.stock || 0
-      }));
-      setBooksList(mapped);
-    }).catch(console.error);
-    
-    // Load Transports
-    const savedTransports = JSON.parse(localStorage.getItem('transports') || '[]');
-    setTransportsList(savedTransports);
-    
-    // Load Bills for numbering and editing
-    billsApi.getAll().then(bills => {
-      if (id) {
-        // Edit mode
-        const billToEdit = bills.find(b => b.id.toString() === id);
-        if (billToEdit) {
-          setIsEditMode(true);
-          setBillInfo({
-             billNo: billToEdit.bill_no,
-             date: billToEdit.date,
-             transport: billToEdit.transport,
-             destination: billToEdit.destination,
-             bundles: billToEdit.bundles,
-             lrDate: billToEdit.lr_date || '',
-             lrNo: billToEdit.lr_no || ''
-          });
-          
-          if (billToEdit.customer_id) {
-             const cust = dbClients.find(c => c.id === billToEdit.customer_id);
-             if (cust) setCustomer(cust);
+        const mappedBooks = booksData.map(b => ({
+          id: b.id,
+          itemCode: b.alias_name || '',
+          hsnCode: '',
+          itemName: b.book_name || '',
+          mrp: b.price || '0.00',
+          stock: b.stock || 0
+        }));
+        setBooksList(mappedBooks);
+
+        // Load Transports
+        const savedTransports = JSON.parse(localStorage.getItem('transports') || '[]');
+        setTransportsList(savedTransports);
+
+        if (id) {
+          // Edit mode
+          const billToEdit = bills.find(b => b.id.toString() === id);
+          if (billToEdit) {
+            setIsEditMode(true);
+            setBillInfo({
+               billNo: billToEdit.bill_no,
+               date: billToEdit.date,
+               transport: billToEdit.transport,
+               destination: billToEdit.destination,
+               bundles: billToEdit.bundles,
+               lrDate: billToEdit.lr_date || '',
+               lrNo: billToEdit.lr_no || ''
+            });
+            
+            if (billToEdit.customer_id) {
+               const cust = mappedClients.find(c => c.id === billToEdit.customer_id);
+               if (cust) setCustomer(cust);
+            }
+            
+            if (billToEdit.items && billToEdit.items.length > 0) {
+              setItems(billToEdit.items.map((item, idx) => {
+                const book = mappedBooks.find(b => b.id === item.book_id);
+                return {
+                  id: idx + 1,
+                  book_id: item.book_id,
+                  itemName: book ? book.itemName : '',
+                  itemCode: book ? book.itemCode : '',
+                  qty: item.qty,
+                  rate: item.rate,
+                  amount: item.amount,
+                  teachersCopy: item.teachers_copy || 0
+                };
+              }));
+            }
           }
-          
-          if (billToEdit.items && billToEdit.items.length > 0) {
-            setItems(billToEdit.items.map((item, idx) => ({
-               id: idx + 1,
-               book_id: item.book_id,
-               qty: item.qty,
-               rate: item.rate,
-               amount: item.amount,
-               teachersCopy: item.teachers_copy || 0
-            })));
+        } else {
+          // Create mode
+          const billNos = bills.map(b => parseInt(b.bill_no) || 0).sort((a, b) => a - b);
+          let nextNoInt = 1;
+          for (let i = 0; i < billNos.length; i++) {
+            if (billNos[i] === nextNoInt) {
+              nextNoInt++;
+            } else if (billNos[i] > nextNoInt) {
+              break;
+            }
           }
+          const nextNo = String(nextNoInt).padStart(3, '0');
+          setBillInfo(prev => ({ ...prev, billNo: nextNo }));
         }
-      } else {
-        // Create mode
-        const lastBillNo = bills.length > 0 ? (parseInt(bills[bills.length - 1].bill_no) || 0) : 0;
-        const nextNo = String(lastBillNo + 1).padStart(3, '0');
-        setBillInfo(prev => ({ ...prev, billNo: nextNo }));
-      }
-    }).catch(err => {
-        // Fallback for new bill if api fails
+      } catch (err) {
+        console.error(err);
         if (!id) setBillInfo(prev => ({ ...prev, billNo: '001' }));
-    });
-  }, [id, dbClients.length]);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const [billInfo, setBillInfo] = useState({
     billNo: '001',
@@ -217,8 +232,16 @@ export default function CreateBill() {
       if (result.isConfirmed) {
         const savedBills = localStorage.getItem('bills');
         const parsed = savedBills ? JSON.parse(savedBills) : [];
-        const lastBillNo = parsed.length > 0 ? (parseInt(parsed[parsed.length - 1].billInfo.billNo) || 0) : 0;
-        const nextNo = String(lastBillNo + 1).padStart(3, '0');
+        const billNos = parsed.map(b => parseInt(b.billInfo?.billNo) || 0).sort((a, b) => a - b);
+        let nextNoInt = 1;
+        for (let i = 0; i < billNos.length; i++) {
+          if (billNos[i] === nextNoInt) {
+            nextNoInt++;
+          } else if (billNos[i] > nextNoInt) {
+            break;
+          }
+        }
+        const nextNo = String(nextNoInt).padStart(3, '0');
         
         setBillInfo({
           billNo: nextNo,
@@ -359,7 +382,7 @@ export default function CreateBill() {
       confirmButtonText: 'Yes, Print',
       cancelButtonText: 'No',
       confirmButtonColor: '#2563eb'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
         handlePrint();
       }
@@ -370,7 +393,17 @@ export default function CreateBill() {
         localStorage.removeItem('billDraft');
 
         // Prepare next bill No
-        const nextNo = String(parseInt(billInfo.billNo) + 1).padStart(3, '0');
+        const allBills = await billsApi.getAll();
+        const billNos = allBills.map(b => parseInt(b.bill_no) || 0).sort((a, b) => a - b);
+        let nextNoInt = 1;
+        for (let i = 0; i < billNos.length; i++) {
+          if (billNos[i] === nextNoInt) {
+            nextNoInt++;
+          } else if (billNos[i] > nextNoInt) {
+            break;
+          }
+        }
+        const nextNo = String(nextNoInt).padStart(3, '0');
         setBillInfo(prev => ({ ...prev, billNo: nextNo }));
         
         // Reset customer and items for new bill
@@ -573,9 +606,8 @@ export default function CreateBill() {
   
   const discountAmt = parseFloat(billSettings.discountAmount) || 0;
   const freightAmt = parseFloat(billSettings.freight) || 0;
-  const roundOffAmt = parseFloat(billSettings.roundOff) || 0;
   
-  const netAmount = grossAmount - discountAmt + freightAmt + roundOffAmt;
+  const netAmount = grossAmount - discountAmt + freightAmt;
   const balance = netAmount - (parseFloat(billSettings.cash) || 0);
 
   const totals = {
@@ -1097,16 +1129,11 @@ export default function CreateBill() {
         <div className="md:w-[40%] bg-slate-100 dark:bg-[#1a1a2e] p-2 rounded border border-slate-200 dark:border-slate-700">
           <div className="grid grid-cols-2 gap-2">
             
-            {/* Column 1: Gross, Discounts, Freight, Round Off */}
+            {/* Column 1: Gross, Bill Discount, Freight */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Gross Amount</label>
                 <input type="text" value={totals.grossAmount.toFixed(2)} readOnly className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" />
-              </div>
-              
-              <div className="flex items-center justify-between mt-1">
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Discount</label>
-                <input type="text" value={billSettings.itemDiscount} onChange={(e) => handleSettingChange('itemDiscount', e.target.value)} className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" />
               </div>
               
               <div className="flex items-center justify-between mt-1">
@@ -1136,18 +1163,6 @@ export default function CreateBill() {
                   type="number" 
                   value={billSettings.freight} 
                   onChange={(e) => handleSettingChange('freight', e.target.value)} 
-                  onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('roundOff').focus(); }}}
-                  className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
-                />
-              </div>
-
-              <div className="flex items-center justify-between mt-1">
-                <label className="text-xs font-bold text-slate-600 dark:text-slate-400">Round Off</label>
-                <input 
-                  id="roundOff"
-                  type="number" 
-                  value={billSettings.roundOff} 
-                  onChange={(e) => handleSettingChange('roundOff', e.target.value)} 
                   onKeyDown={(e) => { if(e.key==='Enter'){ e.preventDefault(); document.getElementById('cash').focus(); }}}
                   className="w-28 px-2 py-1 text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs font-bold" 
                 />

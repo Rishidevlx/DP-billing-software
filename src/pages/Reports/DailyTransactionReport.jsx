@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Printer } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
+import { billsApi, receiptsApi, returnsApi } from '../../services/api';
 
 const parseDateString = (dateStr) => {
   if (!dateStr) return null;
@@ -148,12 +149,36 @@ export default function DailyTransactionReport() {
     totalCredit: 0,
     closingBalance: 0
   });
+  const [allData, setAllData] = useState({ bills: [], receipts: [], returns: [] });
   
   const printRef = useRef();
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [billsData, receiptsData, returnsData] = await Promise.all([
+          billsApi.getAll(),
+          receiptsApi.getAll(),
+          returnsApi.getAll()
+        ]);
+        
+        const mappedBills = billsData.map(b => ({
+          ...b,
+          billInfo: { billNo: b.bill_no, date: b.date },
+          totals: { amount: b.net_amount }
+        }));
+        
+        setAllData({ bills: mappedBills, receipts: receiptsData, returns: returnsData });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
     calculateReport();
-  }, [reportDate]);
+  }, [reportDate, allData]);
 
   const getMinMaxStr = (items, noSelector) => {
     if (items.length === 0) return '()';
@@ -171,9 +196,9 @@ export default function DailyTransactionReport() {
   };
 
   const calculateReport = () => {
-    const bills = JSON.parse(localStorage.getItem('bills') || '[]');
-    const receipts = JSON.parse(localStorage.getItem('receipts') || '[]');
-    const returns = JSON.parse(localStorage.getItem('returns') || '[]');
+    const bills = allData.bills;
+    const receipts = allData.receipts;
+    const returns = allData.returns;
 
     let targetDateObj = reportDate ? new Date(reportDate) : null;
     if(targetDateObj) targetDateObj.setHours(0,0,0,0);
@@ -255,7 +280,7 @@ export default function DailyTransactionReport() {
       returnsAmount: dailyReturns,
       salesReturnNos: getMinMaxStr(todayReturns, rt => rt.returnInfo?.returnNo),
       receiptsAmount: dailyReceipts,
-      receiptNos: getMinMaxStr(todayReceipts, r => r.voucherNo),
+      receiptNos: getMinMaxStr(todayReceipts, r => r.receipt_no),
       discountAmount: dailyDiscounts,
       totalDebit,
       totalCredit,
