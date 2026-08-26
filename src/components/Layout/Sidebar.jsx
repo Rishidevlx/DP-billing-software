@@ -81,7 +81,7 @@ const menuItems = [
       { title: 'Ledger Statement', path: '/reports/ledger', icon: <FileText size={16} /> },
       { title: 'Ledger Group Summary', path: '/reports/ledger-group', icon: <FileText size={16} /> },
       { title: 'Payment Pending', path: '/reports/payment-pending', icon: <FileText size={16} /> },
-      { title: 'Receipts', path: '/reports/receipts', icon: <FileText size={16} /> },
+      { title: 'Receipts', path: '/reports/receipt', icon: <FileText size={16} /> },
       { title: 'All Receipts', path: '/reports/all-receipts', icon: <Receipt size={16} /> },
     ]
   },
