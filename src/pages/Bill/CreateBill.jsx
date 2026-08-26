@@ -98,6 +98,14 @@ export default function CreateBill() {
                 };
               }));
             }
+            
+            setBillSettings(prev => ({
+              ...prev,
+              discountPercent: billToEdit.discount_percent || '',
+              discountAmount: billToEdit.discount_amount || '',
+              freight: billToEdit.freight || '',
+              roundOff: billToEdit.round_off || ''
+            }));
           }
         } else {
           // Create mode
