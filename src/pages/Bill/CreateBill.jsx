@@ -221,7 +221,7 @@ export default function CreateBill() {
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [items, billInfo, customer]);
+  }, [items, billInfo, customer, billSettings]);
 
   // Auto-save draft whenever inputs change
   useEffect(() => {

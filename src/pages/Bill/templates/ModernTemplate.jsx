@@ -1,179 +1,174 @@
 import React, { forwardRef } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
 
 const ModernTemplate = forwardRef(({ billData }, ref) => {
   if (!billData) return null;
   const { customer, billInfo, items, totals } = billData;
   const digitalSignature = localStorage.getItem('digitalSignature');
-  const creatorName = billData?.billInfo?.created_by || JSON.parse(localStorage.getItem('currentUser') || '{}').name || 'Admin';
-  const formattedTime = billData?.billInfo?.created_at 
-    ? new Date(billData.billInfo.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-  const numberToWords = (num) => {
-    if (!num) return "ZERO";
-    const a = ['', 'ONE ', 'TWO ', 'THREE ', 'FOUR ', 'FIVE ', 'SIX ', 'SEVEN ', 'EIGHT ', 'NINE ', 'TEN ', 'ELEVEN ', 'TWELVE ', 'THIRTEEN ', 'FOURTEEN ', 'FIFTEEN ', 'SIXTEEN ', 'SEVENTEEN ', 'EIGHTEEN ', 'NINETEEN '];
-    const b = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-    const inWords = (n) => {
-      if ((n = n.toString()).length > 9) return 'overflow';
-      let nString = ('000000000' + n).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-      if (!nString) return '';
-      let str = '';
-      str += (nString[1] != 0) ? (a[Number(nString[1])] || b[nString[1][0]] + ' ' + a[nString[1][1]]) + 'CRORE ' : '';
-      str += (nString[2] != 0) ? (a[Number(nString[2])] || b[nString[2][0]] + ' ' + a[nString[2][1]]) + 'LAKH ' : '';
-      str += (nString[3] != 0) ? (a[Number(nString[3])] || b[nString[3][0]] + ' ' + a[nString[3][1]]) + 'THOUSAND ' : '';
-      str += (nString[4] != 0) ? (a[Number(nString[4])] || b[nString[4][0]] + ' ' + a[nString[4][1]]) + 'HUNDRED ' : '';
-      str += (nString[5] != 0) ? ((str != '') ? 'AND ' : '') + (a[Number(nString[5])] || b[nString[5][0]] + ' ' + a[nString[5][1]]) : '';
-      return str;
-    };
-    return inWords(num) + 'ONLY';
-  };
-
+  
   const padItems = (itemsArray, minLength) => {
     const arr = itemsArray || [];
     if (arr.length >= minLength) return arr;
     const padding = new Array(minLength - arr.length).fill({
-      id: '', itemDetails: '', rate: '', qty: '', amount: ''
+      id: '', itemName: '', rate: '', qty: '', amount: ''
     });
     return [...arr, ...padding];
   };
-  const paddedItems = padItems(items, 15);
+  const paddedItems = padItems(items, 6); // fewer rows
 
   return (
     <div className="bg-white p-4 print-container" ref={ref}>
-      <div className="w-[210mm] min-h-[297mm] mx-auto bg-white print-page relative">
+      <div className="w-[210mm] min-h-[297mm] mx-auto bg-white print-page relative text-[#374151] font-sans overflow-hidden">
         
-        <div className="flex flex-col h-[230mm] font-sans text-slate-800">
-          {/* Header - Sidebar Style */}
-          <div className="flex border-b border-blue-200 mb-6">
-            <div className="w-1/3 bg-slate-50 p-6 flex flex-col justify-center border-r border-blue-200">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">TAX INVOICE</h1>
-              <p className="text-sm font-medium text-slate-500 uppercase">Original for Recipient</p>
-            </div>
-            <div className="w-2/3 p-6 flex justify-between items-center bg-white">
-              <div className="text-sm">
-                <h2 className="text-xl font-bold text-slate-900">DOLPHIN PUBLICATIONS</h2>
-                <p className="text-slate-600 mt-1">39, West Madavilagam,</p>
-                <p className="text-slate-600">Srivilliputtur - 626 125</p>
-                <p className="text-slate-600 mt-2 font-medium">GSTIN: 33CAEPK4827P1ZC</p>
+        {/* Top Blue Edge Accent */}
+        <div className="absolute top-0 left-0 w-[80%] h-4 bg-[#1e3a8a] rounded-br-2xl"></div>
+
+        <div className="flex flex-col h-[285mm] pt-12 pb-6 px-10">
+          
+          {/* Header Row */}
+          <div className="flex justify-between items-start mb-16 px-4 pt-4">
+            <div className="flex items-center gap-2 text-[#1e3a8a]">
+              <div className="w-8 h-8 rounded-full border-2 border-[#1e3a8a] flex items-center justify-center font-bold text-lg">
+                 dp
               </div>
-              <div className="text-right">
-                 <img src="/DP-logo.png" alt="Logo" className="w-[100px] h-auto object-contain mb-2" />
-                 <p className="text-xs text-slate-500">Mob: 98653-06197</p>
-              </div>
+              <h2 className="font-bold text-xl tracking-wide">Dolphin Publications</h2>
             </div>
+            
+            <h1 className="text-5xl font-bold tracking-widest text-[#374151]">INVOICE</h1>
           </div>
 
-          <div className="flex gap-6 px-6 mb-6">
-            {/* Bill To */}
-            <div className="flex-1 bg-slate-50 rounded-xl p-5 border border-slate-200">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Billed To</h3>
-              <p className="font-bold text-slate-900 text-base">{customer?.school || "School Name"}</p>
-              <p className="text-sm text-slate-600 mt-1">{customer?.address1 || ""}</p>
-              <p className="text-sm text-slate-600">{customer?.district || ""}</p>
-              {customer?.mobile && <p className="text-sm text-slate-600 mt-1">Mob: {customer.mobile}</p>}
+          {/* Details Row */}
+          <div className="flex justify-between items-start mb-10 px-4 text-[11px]">
+            <div>
+              <p className="font-bold text-[#1e3a8a] mb-2 text-xs">Issued To</p>
+              <p className="font-semibold text-sm mb-1">{customer?.name || customer?.school || 'Customer Name'}</p>
+              <p>{customer?.address1}</p>
+              {customer?.address2 && <p>{customer?.address2}</p>}
+              <p>{customer?.district || customer?.city}</p>
+              <p className="mt-1">{customer?.mobile || customer?.phone}</p>
             </div>
-            {/* Bill Info */}
-            <div className="w-[200px] shrink-0 bg-blue-50 rounded-xl p-5 border border-blue-100 flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Invoice No</p>
-                <p className="font-bold text-blue-900 text-lg">{billInfo?.billNo || ""}</p>
+            
+            <div className="w-[220px]">
+              <p className="font-bold text-[#1e3a8a] mb-2 text-xs">Invoice To</p>
+              <div className="flex justify-between py-1">
+                <span className="font-semibold">Invoice No:</span>
+                <span>{billInfo?.billNo}</span>
               </div>
-              <div>
-                <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1 mt-3">Invoice Date</p>
-                <p className="font-bold text-blue-900 text-sm">{billInfo?.date || ""}</p>
+              <div className="flex justify-between py-1">
+                <span className="font-semibold">Date:</span>
+                <span>{billInfo?.date}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="font-semibold">Due Date:</span>
+                <span>{billInfo?.date}</span>
               </div>
             </div>
           </div>
 
           {/* Table */}
-          <div className="px-6 flex-1">
-            <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-900 text-white text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4 text-center w-12 font-medium">S.No</th>
-                    <th className="py-3 px-4 text-left font-medium">Particulars</th>
-                    <th className="py-3 px-4 text-right w-24 font-medium">Qty</th>
-                    <th className="py-3 px-4 text-right w-28 font-medium">Rate</th>
-                    <th className="py-3 px-4 text-right w-32 font-medium">Amount</th>
+          <div className="flex-1 px-4">
+            <table className="w-full text-[11px] border-collapse">
+              <thead>
+                <tr className="border-b-2 border-[#1e3a8a] text-[#1e3a8a]">
+                  <th className="py-2 px-2 text-left font-bold w-[50%]">Description</th>
+                  <th className="py-2 px-2 text-center font-bold">Quantity</th>
+                  <th className="py-2 px-2 text-center font-bold">Unit Price</th>
+                  <th className="py-2 px-2 text-right font-bold">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paddedItems.map((item, idx) => (
+                  <tr key={idx} className="border-b border-[#f3f4f6] last:border-b-0">
+                    <td className="py-3 px-2 font-medium">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
+                    <td className="py-3 px-2 text-center">{item?.qty || ""}</td>
+                    <td className="py-3 px-2 text-center">{item?.rate ? `₹ ${Number(item.rate).toFixed(2)}` : ""}</td>
+                    <td className="py-3 px-2 text-right font-medium">{item?.amount ? `₹ ${Number(item.amount).toFixed(2)}` : ""}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {paddedItems.map((item, idx) => (
-                    <tr key={idx} className="bg-white">
-                      <td className="py-2 px-4 text-center text-slate-400 text-xs">{idx + 1}</td>
-                      <td className="py-2 px-4 text-slate-700 font-medium">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
-                      <td className="py-2 px-4 text-right text-slate-600">{item?.qty || ""}</td>
-                      <td className="py-2 px-4 text-right text-slate-600">{item?.rate || ""}</td>
-                      <td className="py-2 px-4 text-right font-medium text-slate-800">{item?.amount ? Number(item.amount).toFixed(2) : ""}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-slate-50 border-t-2 border-slate-200">
-                    <td colSpan="4" className="py-4 px-4 text-right font-bold text-slate-900">NET AMOUNT</td>
-                    <td className="py-4 px-4 text-right font-bold text-slate-900 text-base">{Number(totals?.netAmount || 0).toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Footer Info */}
-          <div className="px-6 pb-4 mt-6">
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider font-bold">Amount in Words</p>
-                <p className="text-sm font-medium text-slate-800 uppercase">{numberToWords(Math.round(totals?.netAmount || 0))}</p>
-              </div>
-              <div className="flex flex-col items-center relative mt-6">
-                {digitalSignature && (
-                  <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-5 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
+                ))}
+              </tbody>
+            </table>
+            
+            <div className="w-full border-t border-[#f3f4f6] flex justify-end">
+              <div className="w-[280px]">
+                <div className="flex justify-between py-2 px-4 text-[11px]">
+                   <span className="font-semibold">Subtotal:</span>
+                   <span>₹ {Number(totals?.grossAmount || 0).toFixed(2)}</span>
+                </div>
+                
+                {billData.billSettings?.discountAmount > 0 && (
+                  <div className="flex justify-between py-2 px-4 text-[11px]">
+                     <span className="font-semibold">Discount:</span>
+                     <span>- ₹ {Number(billData.billSettings?.discountAmount || 0).toFixed(2)}</span>
+                  </div>
                 )}
-                <span className="font-bold text-sm mt-8 text-slate-800 border-t border-slate-300 pt-2">Authorised Signatory</span>
+                {billData.billSettings?.freight > 0 && (
+                  <div className="flex justify-between py-2 px-4 text-[11px]">
+                     <span className="font-semibold">Freight:</span>
+                     <span>+ ₹ {Number(billData.billSettings?.freight || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                {billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0 ? (
+                  <div className="flex justify-between py-2 px-4 text-[11px]">
+                     <span className="font-semibold">Round Off:</span>
+                     <span>₹ {Number(billData.billSettings?.roundOff || 0).toFixed(2)}</span>
+                  </div>
+                ) : null}
+
+                <div className="flex justify-between items-center py-3 px-4 bg-[#1e3a8a] text-white font-bold text-[12px] mt-1 rounded-sm">
+                   <span>Total Amount</span>
+                   <span className="text-[14px]">₹ {Number(totals?.netAmount || 0).toFixed(2)}</span>
+                </div>
               </div>
             </div>
-          </div>
-
-        <div className="text-left text-[10px] text-gray-500 mt-2 italic px-2">
-          Prepared By: {creatorName} | Date & Time: {formattedTime}
-        </div>
-        </div>
-
-        {/* CUT LINE */}
-        <div className="relative flex items-center justify-center opacity-50 my-2">
-          <div className="absolute w-full border-t-2 border-dashed border-slate-300"></div>
-          <span className="bg-white px-2 text-slate-400 text-lg relative z-10" style={{ transform: 'rotate(180deg)' }}>✂️</span>
-        </div>
-
-        {/* TEAR-OFF SLIP */}
-        <div className="h-[53mm] bg-slate-900 text-white rounded-t-xl p-4 flex flex-col font-sans">
-          <div className="flex justify-between border-b border-slate-700 pb-2 mb-3">
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Delivery Details</p>
-              <h2 className="text-lg font-bold">{customer?.school || "School Name"}</h2>
-              <p className="text-sm text-slate-300">{customer?.town} - {customer?.district}</p>
-              {customer?.mobile && <p className="text-sm text-slate-300">Mob: {customer.mobile}</p>}
+            
+            {/* Payment Information */}
+            <div className="mt-8 text-[11px]">
+               <p className="font-bold text-[#1e3a8a] mb-2">Payment Information</p>
+               <div className="flex max-w-[300px]">
+                  <div className="w-[100px] text-slate-500 space-y-1">
+                     <p>Bank Name:</p>
+                     <p>Account Name:</p>
+                     <p>Account No:</p>
+                  </div>
+                  <div className="font-semibold space-y-1">
+                     <p>State Bank of India</p>
+                     <p>Dolphin Publications</p>
+                     <p>1234567890123</p>
+                  </div>
+               </div>
             </div>
-            <div className="text-right flex flex-col justify-between">
-               <p className="text-lg font-bold text-blue-400">Bill No: {billInfo?.billNo}</p>
-               <p className="text-sm text-slate-300">Date: {billInfo?.date}</p>
-            </div>
+
           </div>
-          <div className="flex justify-between items-end flex-1">
-             <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-200">
-               <p><span className="text-slate-500 mr-2">Transport:</span> {billInfo?.transport}</p>
-               <p><span className="text-slate-500 mr-2">Destination:</span> {billInfo?.destination}</p>
-               <p><span className="text-slate-500 mr-2">LR No:</span> {billInfo?.lrNo}</p>
-               <p><span className="text-slate-500 mr-2">Bundles:</span> {billInfo?.bundles}</p>
+          
+          {/* Bottom Banner */}
+          <div className="w-full flex items-end mt-auto h-[100px]">
+             {/* Left logo area */}
+             <div className="w-[40%] bg-[#1e3a8a] text-white h-[70px] rounded-tr-3xl flex items-center px-8 relative z-10">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center font-bold text-[10px]">
+                     dp
+                  </div>
+                  <h2 className="font-bold tracking-wide">Dolphin Publications</h2>
+                </div>
              </div>
-             {billInfo?.isEbill && billInfo?.qrCode ? (
-                <div className="bg-white p-1 rounded-lg"><QRCodeCanvas value={billInfo.qrCode} size={60} level={"M"} /></div>
-             ) : (
-                <div className="w-[68px] h-[68px]"></div>
-             )}
+             
+             {/* Right contact area */}
+             <div className="w-[60%] bg-[#1e40af] h-[100px] text-white rounded-tl-[40px] flex flex-col justify-center px-10 text-[9px] space-y-2 relative -ml-10 z-0">
+                <p className="flex items-center gap-3">
+                   <span className="w-4 h-4 rounded-full bg-white text-[#1e40af] flex items-center justify-center font-bold">📞</span> 
+                   +91 98765 43210
+                </p>
+                <p className="flex items-center gap-3">
+                   <span className="w-4 h-4 rounded-full bg-white text-[#1e40af] flex items-center justify-center font-bold">✉</span> 
+                   dolphinpublications@gmail.com
+                </p>
+                <p className="flex items-center gap-3">
+                   <span className="w-4 h-4 rounded-full bg-white text-[#1e40af] flex items-center justify-center font-bold">📍</span> 
+                   39, West Madavilagam, Srivilliputtur - 626125
+                </p>
+             </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import ModernTemplate from './templates/ModernTemplate';
 import ElegantTemplate from './templates/ElegantTemplate';
 import MinimalistTemplate from './templates/MinimalistTemplate';
 import VibrantTemplate from './templates/VibrantTemplate';
+import { settingsApi } from '../../services/api';
 
 const PrintInvoice = forwardRef(({ billData }, ref) => {
   const [template, setTemplate] = useState('classic');
@@ -12,6 +13,14 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
     const savedTemplate = localStorage.getItem('invoiceTemplate');
     if (savedTemplate) {
       setTemplate(savedTemplate);
+    } else {
+      settingsApi.getAll().then(data => {
+        const t = data.find(s => s.setting_key === 'invoiceTemplate');
+        if (t) {
+          setTemplate(t.setting_value);
+          localStorage.setItem('invoiceTemplate', t.setting_value);
+        }
+      }).catch(() => {});
     }
   }, []);
 

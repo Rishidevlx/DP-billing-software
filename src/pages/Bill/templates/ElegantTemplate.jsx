@@ -1,152 +1,163 @@
 import React, { forwardRef } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
 
 const ElegantTemplate = forwardRef(({ billData }, ref) => {
   if (!billData) return null;
   const { customer, billInfo, items, totals } = billData;
   const digitalSignature = localStorage.getItem('digitalSignature');
-  const creatorName = billData?.billInfo?.created_by || JSON.parse(localStorage.getItem('currentUser') || '{}').name || 'Admin';
-  const formattedTime = billData?.billInfo?.created_at 
-    ? new Date(billData.billInfo.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true, year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-  const numberToWords = (num) => {
-    if (!num) return "ZERO";
-    const a = ['', 'ONE ', 'TWO ', 'THREE ', 'FOUR ', 'FIVE ', 'SIX ', 'SEVEN ', 'EIGHT ', 'NINE ', 'TEN ', 'ELEVEN ', 'TWELVE ', 'THIRTEEN ', 'FOURTEEN ', 'FIFTEEN ', 'SIXTEEN ', 'SEVENTEEN ', 'EIGHTEEN ', 'NINETEEN '];
-    const b = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-    const inWords = (n) => {
-      if ((n = n.toString()).length > 9) return 'overflow';
-      let nString = ('000000000' + n).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-      if (!nString) return '';
-      let str = '';
-      str += (nString[1] != 0) ? (a[Number(nString[1])] || b[nString[1][0]] + ' ' + a[nString[1][1]]) + 'CRORE ' : '';
-      str += (nString[2] != 0) ? (a[Number(nString[2])] || b[nString[2][0]] + ' ' + a[nString[2][1]]) + 'LAKH ' : '';
-      str += (nString[3] != 0) ? (a[Number(nString[3])] || b[nString[3][0]] + ' ' + a[nString[3][1]]) + 'THOUSAND ' : '';
-      str += (nString[4] != 0) ? (a[Number(nString[4])] || b[nString[4][0]] + ' ' + a[nString[4][1]]) + 'HUNDRED ' : '';
-      str += (nString[5] != 0) ? ((str != '') ? 'AND ' : '') + (a[Number(nString[5])] || b[nString[5][0]] + ' ' + a[nString[5][1]]) : '';
-      return str;
-    };
-    return inWords(num) + 'ONLY';
-  };
-
+  
   const padItems = (itemsArray, minLength) => {
     const arr = itemsArray || [];
     if (arr.length >= minLength) return arr;
     const padding = new Array(minLength - arr.length).fill({
-      id: '', itemDetails: '', rate: '', qty: '', amount: ''
+      id: '', itemName: '', rate: '', qty: '', amount: ''
     });
     return [...arr, ...padding];
   };
-  const paddedItems = padItems(items, 15);
+  const paddedItems = padItems(items, 8); // fewer rows
 
   return (
     <div className="bg-white p-4 print-container" ref={ref}>
-      <div className="w-[210mm] min-h-[297mm] mx-auto bg-white print-page relative">
+      <div className="w-[210mm] min-h-[297mm] mx-auto bg-white print-page relative text-slate-800 font-sans border-2 border-slate-800 rounded-3xl overflow-hidden flex flex-col">
         
-        <div className="flex flex-col h-[230mm] font-serif text-[#2C3E50] border-8 border-double border-[#2C3E50] m-2 p-4">
-          {/* Header - Overlapping style */}
-          <div className="text-center mb-8 relative">
-             <div className="inline-block border-b-2 border-[#D4AF37] pb-2 px-8 mb-4">
-               <h1 className="text-3xl font-bold uppercase tracking-[0.2em] text-[#2C3E50]">Invoice</h1>
-             </div>
-             <div className="flex justify-between items-start text-left mt-4">
-                <div className="w-[45%]">
-                   <h2 className="text-xl font-bold mb-1">Dolphin Publications</h2>
-                   <p className="text-sm italic">39, West Madavilagam, Srivilliputtur - 626 125</p>
-                   <p className="text-sm">GSTIN: 33CAEPK4827P1ZC</p>
-                </div>
-                <div className="w-[45%] bg-[#F9F6F0] p-4 border border-[#E0D6C8] shadow-sm text-right">
-                   <p className="text-sm uppercase tracking-wider text-[#7F8C8D] mb-1">Invoice Details</p>
-                   <p className="font-bold text-lg">No. {billInfo?.billNo}</p>
-                   <p className="text-sm">Date: {billInfo?.date}</p>
-                </div>
-             </div>
+        {/* Top Edge Accent */}
+        <div className="w-full h-[30px] bg-slate-800 relative">
+           <div className="absolute top-0 left-[15%] w-[120px] h-[15px] bg-[#dc2626] skew-x-12 translate-x-4"></div>
+        </div>
+
+        <div className="flex-1 flex flex-col pt-12 pb-6 px-16 relative">
+          
+          {/* Header Row */}
+          <div className="flex justify-start items-center mb-12">
+            <div className="flex items-center gap-4 text-[#dc2626]">
+              {/* Logo shape */}
+              <div className="w-10 h-10 border-2 border-[#dc2626] rounded-t-full rounded-bl-full flex items-center justify-center font-bold text-lg rotate-45">
+                 <span className="-rotate-45">dp</span>
+              </div>
+              <div className="leading-tight">
+                 <h1 className="font-extrabold text-2xl text-slate-900 tracking-wide">Dolphin</h1>
+                 <p className="text-[10px] font-semibold text-slate-500 tracking-widest uppercase">Publications</p>
+              </div>
+            </div>
           </div>
 
-          <div className="mb-6 px-2">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] mb-2 border-b border-[#E0D6C8] pb-1">Billed To</h3>
-            <p className="font-bold text-lg">{customer?.school || "School Name"}</p>
-            <p className="text-sm">{customer?.address1}, {customer?.district}</p>
-            {customer?.mobile && <p className="text-sm">Ph: {customer.mobile}</p>}
+          {/* Details Row */}
+          <div className="flex justify-between items-start mb-12 text-[10px] font-semibold text-slate-600">
+            <div className="w-[50%] space-y-6">
+              <div>
+                <p className="font-bold text-slate-900 uppercase tracking-widest mb-1 text-[11px]">ISSUED TO:</p>
+                <p className="font-bold text-sm text-slate-800">{customer?.name || customer?.school || 'Customer Name'}</p>
+                <p className="font-normal">{customer?.address1}</p>
+                {customer?.address2 && <p className="font-normal">{customer?.address2}</p>}
+                <p className="font-normal">{customer?.district || customer?.city}</p>
+              </div>
+              
+              <div>
+                <p className="font-bold text-slate-900 uppercase tracking-widest mb-1 text-[11px]">PAY TO:</p>
+                <p className="font-bold text-slate-800">State Bank of India</p>
+                <p className="font-normal">Account Name: Dolphin Publications</p>
+                <p className="font-normal">Account No: 1234567890123</p>
+              </div>
+            </div>
+            
+            <div className="w-[200px] mt-6">
+              <div className="flex justify-between py-1">
+                <span className="font-bold text-slate-900 uppercase tracking-widest">INVOICE NO:</span>
+                <span className="font-bold text-slate-800">{billInfo?.billNo}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="font-bold text-slate-900 uppercase tracking-widest">DATE:</span>
+                <span>{billInfo?.date}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="font-bold text-slate-900 uppercase tracking-widest">DUE DATE:</span>
+                <span>{billInfo?.date}</span>
+              </div>
+            </div>
           </div>
 
           {/* Table */}
-          <div className="flex-1 px-2">
-            <table className="w-full text-sm border-collapse">
+          <div className="flex-1 mb-8">
+            <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b-2 border-[#2C3E50] text-left">
-                  <th className="py-2 px-2 font-bold uppercase tracking-wider text-xs">S.No</th>
-                  <th className="py-2 px-2 font-bold uppercase tracking-wider text-xs">Particulars</th>
-                  <th className="py-2 px-2 text-right font-bold uppercase tracking-wider text-xs">Qty</th>
-                  <th className="py-2 px-2 text-right font-bold uppercase tracking-wider text-xs">Rate</th>
-                  <th className="py-2 px-2 text-right font-bold uppercase tracking-wider text-xs">Amount</th>
+                <tr className="border-y-2 border-slate-900">
+                  <th className="py-3 px-2 text-left font-bold uppercase tracking-widest text-[10px] text-slate-900">Description</th>
+                  <th className="py-3 px-2 text-center font-bold uppercase tracking-widest text-[10px] text-slate-900 w-24">Unit Price</th>
+                  <th className="py-3 px-2 text-center font-bold uppercase tracking-widest text-[10px] text-slate-900 w-20">Qty</th>
+                  <th className="py-3 px-2 text-right font-bold uppercase tracking-widest text-[10px] text-slate-900 w-32">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {paddedItems.map((item, idx) => (
-                  <tr key={idx} className="border-b border-[#E0D6C8] border-dashed">
-                    <td className="py-1 px-2 text-[#7F8C8D]">{idx + 1}</td>
-                    <td className="py-1 px-2 font-medium">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
-                    <td className="py-1 px-2 text-right">{item?.qty || ""}</td>
-                    <td className="py-1 px-2 text-right">{item?.rate || ""}</td>
-                    <td className="py-1 px-2 text-right font-medium">{item?.amount ? Number(item.amount).toFixed(2) : ""}</td>
+                  <tr key={idx}>
+                    <td className="py-4 px-2 font-semibold text-slate-700">{item?.itemName || item?.particulars || item?.itemDetails || ""}</td>
+                    <td className="py-4 px-2 text-center font-medium text-slate-600">{item?.rate || ""}</td>
+                    <td className="py-4 px-2 text-center font-medium text-slate-600">{item?.qty || ""}</td>
+                    <td className="py-4 px-2 text-right font-bold text-slate-800">{item?.amount ? Number(item.amount).toFixed(2) : ""}</td>
                   </tr>
                 ))}
-                <tr className="border-t-[3px] border-[#2C3E50]">
-                  <td colSpan="4" className="py-3 px-2 text-right font-bold uppercase tracking-wider text-sm">Net Amount Due</td>
-                  <td className="py-3 px-2 text-right font-bold text-lg text-[#D4AF37]">{Number(totals?.netAmount || 0).toFixed(2)}</td>
-                </tr>
               </tbody>
             </table>
+            
+            <div className="w-full border-y-2 border-slate-900 mt-2 py-4 flex justify-end text-[11px]">
+              <div className="w-[200px]">
+                <div className="flex justify-between py-1 font-bold text-slate-700">
+                   <span className="uppercase tracking-widest">SUBTOTAL</span>
+                   <span>₹ {Number(totals?.grossAmount || 0).toFixed(2)}</span>
+                </div>
+                
+                {billData.billSettings?.discountAmount > 0 && (
+                  <div className="flex justify-between py-1 font-bold text-slate-700">
+                     <span className="uppercase tracking-widest text-[10px]">DISCOUNT</span>
+                     <span>- ₹ {Number(billData.billSettings?.discountAmount || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                {billData.billSettings?.freight > 0 && (
+                  <div className="flex justify-between py-1 font-bold text-slate-700">
+                     <span className="uppercase tracking-widest text-[10px]">FREIGHT</span>
+                     <span>+ ₹ {Number(billData.billSettings?.freight || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                {billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0 ? (
+                  <div className="flex justify-between py-1 font-bold text-slate-700">
+                     <span className="uppercase tracking-widest text-[10px]">ROUND OFF</span>
+                     <span>₹ {Number(billData.billSettings?.roundOff || 0).toFixed(2)}</span>
+                  </div>
+                ) : null}
+
+                <div className="flex justify-between pt-2 mt-2 font-bold text-sm text-slate-900">
+                   <span className="uppercase tracking-widest">TOTAL</span>
+                   <span>₹ {Number(totals?.netAmount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bottom Banner */}
+          <div className="w-full flex justify-between items-end mt-auto h-[100px] pb-6">
+             <div className="font-bold text-sm text-slate-800 w-[50%]">
+                Thank you for your<br/>business!
+             </div>
+             
+             {/* Signature */}
+             <div className="text-center w-[200px]">
+                <div className="h-[40px] relative w-full mb-1 flex justify-center">
+                   {digitalSignature && (
+                      <img src={digitalSignature} alt="Signature" className="h-full object-contain mix-blend-multiply" />
+                   )}
+                </div>
+                <div className="w-full border-t border-slate-900 pt-1">
+                   <p className="text-[10px] text-slate-500 font-semibold tracking-wider">Authorized Signatory</p>
+                </div>
+             </div>
           </div>
 
-          {/* Footer Info */}
-          <div className="px-2 mt-4 flex justify-between items-end">
-            <div>
-              <p className="text-xs italic text-[#7F8C8D] mb-1">Amount in words</p>
-              <p className="text-sm font-semibold uppercase">{numberToWords(Math.round(totals?.netAmount || 0))}</p>
-            </div>
-            <div className="flex flex-col items-center relative min-w-[150px] mt-6">
-              {digitalSignature && (
-                <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-5 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
-              )}
-              <span className="font-serif italic text-sm mt-8 border-t border-[#2C3E50] w-full text-center pt-1">Authorised Signatory</span>
-            </div>
-          </div>
         </div>
 
-        <div className="text-left text-[10px] text-gray-500 mt-2 italic px-2">
-          Prepared By: {creatorName} | Date & Time: {formattedTime}
-        </div>
-
-        {/* CUT LINE */}
-        <div className="relative flex items-center justify-center opacity-30 my-2">
-          <div className="absolute w-full border-t border-dashed border-[#2C3E50]"></div>
-          <span className="bg-white px-2 text-[#2C3E50] text-lg relative z-10" style={{ transform: 'rotate(180deg)' }}>✂️</span>
-        </div>
-
-        {/* TEAR-OFF SLIP */}
-        <div className="h-[53mm] border-2 border-[#D4AF37] bg-[#F9F6F0] m-2 flex p-4 font-serif">
-          <div className="w-1/2 pr-4 border-r border-[#E0D6C8] flex flex-col justify-between">
-            <div>
-               <h4 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] mb-2">Delivery Ticket</h4>
-               <p className="font-bold text-lg text-[#2C3E50]">{customer?.school}</p>
-               <p className="text-sm text-[#2C3E50]">{customer?.town} - {customer?.district}</p>
-            </div>
-            <p className="text-xs italic text-[#7F8C8D]">Invoice Ref: {billInfo?.billNo}</p>
-          </div>
-          <div className="w-1/2 pl-4 flex flex-col justify-between">
-            <div className="grid grid-cols-2 text-xs gap-y-2">
-               <p><strong className="text-[#2C3E50]">Transport:</strong><br/>{billInfo?.transport}</p>
-               <p><strong className="text-[#2C3E50]">Bundles:</strong><br/>{billInfo?.bundles}</p>
-               <p><strong className="text-[#2C3E50]">LR No:</strong><br/>{billInfo?.lrNo}</p>
-            </div>
-            <div className="flex justify-end mt-2">
-               {billInfo?.isEbill && billInfo?.qrCode && (
-                  <div className="border border-[#D4AF37] p-1 bg-white"><QRCodeCanvas value={billInfo.qrCode} size={50} level={"M"} /></div>
-               )}
-            </div>
-          </div>
+        {/* Bottom Edge Accent */}
+        <div className="w-full h-[30px] bg-slate-800 relative mt-auto flex justify-end items-end">
+           <div className="w-[60%] h-full flex items-end justify-end">
+              <div className="w-[200px] h-[15px] bg-[#dc2626] skew-x-12 translate-x-4 mb-[15px] mr-10"></div>
+           </div>
         </div>
 
       </div>

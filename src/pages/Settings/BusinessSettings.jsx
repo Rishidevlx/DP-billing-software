@@ -132,6 +132,7 @@ export default function BusinessSettings() {
   const handleTemplateSelect = async (templateId) => {
     try {
       await settingsApi.save('invoiceTemplate', templateId);
+      localStorage.setItem('invoiceTemplate', templateId);
       setInvoiceTemplate(templateId);
       Swal.fire({ title: 'Success', text: 'Invoice template updated successfully!', icon: 'success', timer: 1500, showConfirmButton: false });
     } catch (err) {
