@@ -143,16 +143,9 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               </div>
             </div>
 
-            <div className="flex border-b border-slate-800 flex-1">
+            <div className="flex flex-1">
               <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">LR NO</div>
               <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.lrNo || ""}</div>
-            </div>
-
-            <div className="flex flex-1">
-              <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">BOOKING</div>
-              <div className="w-1/2 p-1 flex items-center font-extrabold">
-                PAID / <span className="text-red-600 ml-1">TO PAY</span>
-              </div>
             </div>
           </div>
         </div>
@@ -327,11 +320,7 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
             <span className="mr-2">:</span>
             <span className="text-slate-900">{billInfo?.lrDate || ""}</span>
           </div>
-          <div className="flex mt-1">
-            <span className="w-28">Booking</span>
-            <span className="mr-2">:</span>
-            <span className="text-slate-900 font-extrabold">PAID / <span className="text-red-600">TO PAY</span></span>
-          </div>
+
 
           <div className="absolute right-2" style={{ top: '' }}>
             <img src="/DP-logo.png" alt="Logo" className="w-[180px] h-auto object-contain max-h-[145px]" />

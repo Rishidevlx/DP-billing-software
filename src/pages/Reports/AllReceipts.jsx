@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Edit, Trash2, FileText } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { receiptsApi, clientsApi } from '../../services/api';
+import { receiptsApi, clientsApi, billsApi } from '../../services/api';
 
 export default function AllReceipts() {
   const [receipts, setReceipts] = useState([]);
@@ -54,9 +54,32 @@ export default function AllReceipts() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          alert('Delete API for Receipts not implemented yet');
+          // First, get the full receipt to find allocations
+          const allReceipts = await receiptsApi.getAll();
+          const fullReceipt = allReceipts.find(r => r.id === receipt.id);
+          
+          // Reverse bill allocations if they exist
+          if (fullReceipt && fullReceipt.allocations) {
+            let allocations = fullReceipt.allocations;
+            if (typeof allocations === 'string') {
+              try { allocations = JSON.parse(allocations); } catch(e) { allocations = {}; }
+            }
+            
+            for (const [billId, allocatedAmount] of Object.entries(allocations)) {
+              if (allocatedAmount > 0) {
+                // Reverse the allocation by paying negative amount
+                await billsApi.pay(billId, -allocatedAmount);
+              }
+            }
+          }
+          
+          // Delete the receipt
+          await receiptsApi.delete(receipt.id);
+          loadReceipts();
+          Swal.fire('Deleted!', 'Receipt has been deleted and bill allocations reversed.', 'success');
         } catch (e) {
           console.error(e);
+          Swal.fire('Error', 'Failed to delete receipt: ' + e.message, 'error');
         }
       }
     });
