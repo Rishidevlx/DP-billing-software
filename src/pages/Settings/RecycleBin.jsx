@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, RotateCcw, AlertTriangle, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { getRecycleBinItems, removeFromRecycleBin, clearRecycleBin } from '../../utils/recycleBin';
-
+import { API_URL } from '../../services/api';
 export default function RecycleBin() {
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +30,7 @@ export default function RecycleBin() {
         
         if (item.recycleType === 'BILL') {
           try {
-            await fetch('http://localhost:5000/api/bills', {
+            await fetch(`${API_URL}/bills`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(item)
@@ -40,7 +40,7 @@ export default function RecycleBin() {
         } 
         else if (item.recycleType === 'RETURN_BILL') {
           try {
-            await fetch('http://localhost:5000/api/returns', {
+            await fetch(`${API_URL}/returns`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(item)
@@ -49,7 +49,7 @@ export default function RecycleBin() {
         }
         else if (item.recycleType === 'RECEIPT') {
           try {
-            await fetch('http://localhost:5000/api/receipts', {
+            await fetch(`${API_URL}/receipts`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(item)

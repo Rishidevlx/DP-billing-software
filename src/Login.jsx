@@ -4,6 +4,7 @@ import { Eye, EyeOff, User, Lock, Download } from 'lucide-react';
 import lottie from 'lottie-web';
 import animationData from './assets/growth-software.json';
 import { usePWA } from './hooks/usePWA';
+import { API_URL } from './services/api';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +78,7 @@ export default function Login() {
           <form className="flex flex-col gap-6" onSubmit={async (e) => {
             e.preventDefault();
             try {
-              const res = await fetch('http://localhost:5000/api/login', {
+              const res = await fetch(`${API_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })

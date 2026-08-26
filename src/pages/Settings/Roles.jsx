@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Plus, Edit, Trash2, Save, X, Check } from 'lucide-react';
 import Swal from 'sweetalert2';
-
+import { API_URL } from '../../services/api';
 const MODULES = [
   'Dashboard', 'Bills', 'Returns', 'Books', 'Clients', 
   'Stocks', 'Reports', 'Settings', 'Users', 'Roles'
@@ -23,7 +23,7 @@ export default function Roles() {
 
   const fetchRoles = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/roles');
+      const res = await fetch(`${API_URL}/roles`);
       const data = await res.json();
       setRoles(data);
     } catch (err) {
@@ -101,13 +101,13 @@ export default function Roles() {
     try {
       let res;
       if (editingRole) {
-        res = await fetch(`http://localhost:5000/api/roles/${editingRole.id}`, {
+        res = await fetch(`${API_URL}/roles/${editingRole.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
       } else {
-        res = await fetch('http://localhost:5000/api/roles', {
+        res = await fetch(`${API_URL}/roles`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -139,7 +139,7 @@ export default function Roles() {
       confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`http://localhost:5000/api/roles/${id}`, { method: 'DELETE' })
+        fetch(`${API_URL}/roles/${id}`, { method: 'DELETE' })
           .then(async res => {
             if (res.ok) {
               fetchRoles();

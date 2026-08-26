@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, UserPlus, Shield, User, Users as UsersIcon, Edit, X, Save } from 'lucide-react';
 import Swal from 'sweetalert2';
-
+import { API_URL } from '../../services/api';
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [rolesList, setRolesList] = useState([]);
@@ -11,8 +11,8 @@ export default function Users() {
   const fetchUsersAndRoles = async () => {
     try {
       const [usersRes, rolesRes] = await Promise.all([
-        fetch('http://localhost:5000/api/users'),
-        fetch('http://localhost:5000/api/roles')
+        fetch(`${API_URL}/users`),
+        fetch(`${API_URL}/roles`)
       ]);
       const usersData = await usersRes.json();
       const rolesData = await rolesRes.json();
@@ -38,7 +38,7 @@ export default function Users() {
     if (!newUser.name.trim() || !newUser.email.trim() || !newUser.password.trim()) return;
 
     try {
-      const res = await fetch('http://localhost:5000/api/users', {
+      const res = await fetch(`${API_URL}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newUser, name: newUser.name.trim(), email: newUser.email.trim() })
@@ -66,7 +66,7 @@ export default function Users() {
     if (!editingUser.name.trim() || !editingUser.password.trim()) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${editingUser.email}`, {
+      const res = await fetch(`${API_URL}/users/${editingUser.email}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingUser)
@@ -99,7 +99,7 @@ export default function Users() {
       confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
       if (result.isConfirmed) {
-        fetch(`http://localhost:5000/api/users/${email}`, { method: 'DELETE' })
+        fetch(`${API_URL}/users/${email}`, { method: 'DELETE' })
           .then(res => {
             if (res.ok) {
               fetchUsersAndRoles();
