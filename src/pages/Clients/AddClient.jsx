@@ -95,7 +95,8 @@ export default function AddClient() {
             address: client.address1 || '',
             pinCode: client.address2 || '',
             city: client.town || '',
-            district: client.district || ''
+            district: client.district || '',
+            partyType: client.party_type || 'School'
           });
         }
       });

@@ -35,7 +35,7 @@ export default function ClientsDetails() {
         mobileNo: c.mobile || '',
         city: c.town || '',
         group: 'Customer',
-        partyType: 'School',
+        partyType: c.party_type || 'School',
         badDebtor: false
       }));
       setClients(mappedClients);
@@ -371,8 +371,8 @@ export default function ClientsDetails() {
                     <td className="p-4 text-sm text-slate-700 dark:text-slate-300">{client.group}</td>
                     <td className="p-4">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        client.partyType === 'Customer' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                        client.partyType === 'Supplier' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                        client.partyType === 'School' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                        client.partyType === 'Shop' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
                         'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                       }`}>
                         {client.partyType}
