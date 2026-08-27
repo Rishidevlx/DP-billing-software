@@ -44,7 +44,12 @@ export default function AllBills() {
             lrNo: b.lr_no,
             lrDate: b.lr_date,
             bundles: b.bundles,
-            eWayBillNo: b.e_way_bill_no || ''
+            isEbill: Boolean(b.is_ebill),
+            irn: b.irn || '',
+            ackNo: b.ack_no || '',
+            ackDate: b.ack_date || '',
+            qrCode: b.qr_code || '',
+            eWayBillNo: b.eway_bill_no || ''
           },
           customer: {
             id: customer?.id,
@@ -65,9 +70,15 @@ export default function AllBills() {
             };
           }) : [],
           totals: {
-            grossAmount: b.gross_amount,
-            netAmount: b.net_amount,
-            amount: b.net_amount
+            grossAmount: Number(b.gross_amount) || 0,
+            netAmount: Number(b.net_amount) || 0,
+            amount: Number(b.net_amount) || 0
+          },
+          billSettings: {
+            discountPercent: b.discount_percent || '',
+            discountAmount: Number(b.discount_amount) || 0,
+            freight: Number(b.freight) || 0,
+            roundOff: Number(b.round_off) || 0
           }
         };
       });

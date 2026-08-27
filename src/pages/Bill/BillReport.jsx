@@ -167,7 +167,13 @@ export default function BillReport() {
               destination: b.destination,
               lrNo: b.lr_no,
               lrDate: b.lr_date,
-              bundles: b.bundles
+              bundles: b.bundles,
+              isEbill: Boolean(b.is_ebill),
+              irn: b.irn || '',
+              ackNo: b.ack_no || '',
+              ackDate: b.ack_date || '',
+              qrCode: b.qr_code || '',
+              eWayBillNo: b.eway_bill_no || ''
             },
             customer: {
               id: customer?.id,
@@ -180,9 +186,16 @@ export default function BillReport() {
             },
             items: b.items,
             totals: {
+              qty: b.items ? b.items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0) : 0,
               grossAmount: b.gross_amount,
               netAmount: b.net_amount,
               amount: b.net_amount
+            },
+            billSettings: {
+              discountPercent: b.discount_percent,
+              discountAmount: b.discount_amount,
+              freight: b.freight,
+              roundOff: b.round_off
             }
           };
         });

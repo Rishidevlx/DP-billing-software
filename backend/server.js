@@ -159,6 +159,12 @@ const initDB = async () => {
     `);
     try { await pool.query('ALTER TABLE bills ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP'); } catch(e) {}
     try { await pool.query('ALTER TABLE bills ADD COLUMN amount_paid DECIMAL(10,2) DEFAULT 0'); } catch(e) {}
+    try { await pool.query('ALTER TABLE bills ADD COLUMN is_ebill BOOLEAN DEFAULT FALSE'); } catch(e) {}
+    try { await pool.query('ALTER TABLE bills ADD COLUMN irn TEXT'); } catch(e) {}
+    try { await pool.query('ALTER TABLE bills ADD COLUMN ack_no VARCHAR(100)'); } catch(e) {}
+    try { await pool.query('ALTER TABLE bills ADD COLUMN ack_date VARCHAR(50)'); } catch(e) {}
+    try { await pool.query('ALTER TABLE bills ADD COLUMN qr_code TEXT'); } catch(e) {}
+    try { await pool.query('ALTER TABLE bills ADD COLUMN eway_bill_no VARCHAR(100)'); } catch(e) {}
 
     // 7. Bill Items Table
     await pool.query(`
@@ -610,11 +616,11 @@ app.get('/api/bills/:id', async (req, res) => {
 });
 
 app.post('/api/bills', async (req, res) => {
-  const { bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, items } = req.body;
+  const { bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, is_ebill, irn, ack_no, ack_date, qr_code, eway_bill_no, items } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO bills (bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by]
+      'INSERT INTO bills (bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, is_ebill, irn, ack_no, ack_date, qr_code, eway_bill_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, is_ebill || false, irn || '', ack_no || '', ack_date || '', qr_code || '', eway_bill_no || '']
     );
     const billId = result.insertId;
     if (items && items.length > 0) {
@@ -660,7 +666,7 @@ app.patch('/api/bills/:id/pay', async (req, res) => {
 // PUT to update a bill
 app.put('/api/bills/:id', async (req, res) => {
   const { id } = req.params;
-  const { bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, items } = req.body;
+  const { bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, is_ebill, irn, ack_no, ack_date, qr_code, eway_bill_no, items } = req.body;
   try {
     // 1. Fetch old items to reverse stock
     const [oldItems] = await pool.query('SELECT * FROM bill_items WHERE bill_id=?', [id]);
@@ -670,8 +676,8 @@ app.put('/api/bills/:id', async (req, res) => {
 
     // 2. Update bills table
     await pool.query(
-      'UPDATE bills SET bill_no=?, date=?, customer_id=?, transport=?, destination=?, lr_no=?, lr_date=?, bundles=?, gross_amount=?, discount_percent=?, discount_amount=?, freight=?, round_off=?, net_amount=?, created_by=? WHERE id=?',
-      [bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, id]
+      'UPDATE bills SET bill_no=?, date=?, customer_id=?, transport=?, destination=?, lr_no=?, lr_date=?, bundles=?, gross_amount=?, discount_percent=?, discount_amount=?, freight=?, round_off=?, net_amount=?, created_by=?, is_ebill=?, irn=?, ack_no=?, ack_date=?, qr_code=?, eway_bill_no=? WHERE id=?',
+      [bill_no, date, customer_id, transport, destination, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, is_ebill || false, irn || '', ack_no || '', ack_date || '', qr_code || '', eway_bill_no || '', id]
     );
 
     // 3. Delete old bill_items

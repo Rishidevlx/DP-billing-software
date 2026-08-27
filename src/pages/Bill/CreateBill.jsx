@@ -75,7 +75,13 @@ export default function CreateBill() {
                destination: billToEdit.destination,
                bundles: billToEdit.bundles,
                lrDate: billToEdit.lr_date || '',
-               lrNo: billToEdit.lr_no || ''
+               lrNo: billToEdit.lr_no || '',
+               isEbill: Boolean(billToEdit.is_ebill),
+               irn: billToEdit.irn || '',
+               ackNo: billToEdit.ack_no || '',
+               ackDate: billToEdit.ack_date || '',
+               qrCode: billToEdit.qr_code || '',
+               eWayBillNo: billToEdit.eway_bill_no || ''
             });
             
             if (billToEdit.customer_id) {
@@ -352,7 +358,7 @@ export default function CreateBill() {
     const payload = {
       bill_no: updatedBillInfo.billNo,
       date: updatedBillInfo.date,
-      customer_id: customer.id || null, // assumes customer has id
+      customer_id: customer.id || null,
       transport: updatedBillInfo.transport,
       destination: updatedBillInfo.destination,
       lr_no: updatedBillInfo.lrNo,
@@ -365,8 +371,13 @@ export default function CreateBill() {
       round_off: billSettings.roundOff || 0,
       net_amount: totals.netAmount,
       created_by: JSON.parse(localStorage.getItem('currentUser') || '{}').name || 'Admin',
+      is_ebill: updatedBillInfo.isEbill ? 1 : 0,
+      irn: updatedBillInfo.irn || '',
+      ack_no: updatedBillInfo.ackNo || '',
+      ack_date: updatedBillInfo.ackDate || '',
+      qr_code: updatedBillInfo.qrCode || '',
+      eway_bill_no: updatedBillInfo.eWayBillNo || '',
       items: validItems.map(item => {
-        // find book id
         const book = booksList.find(b => b.itemName === item.itemName && b.itemCode === item.itemCode);
         return {
           book_id: book ? book.id : null,
@@ -375,7 +386,7 @@ export default function CreateBill() {
           amount: item.amount,
           teachers_copy: item.teachersCopy || 0
         };
-      }).filter(item => item.book_id !== null) // ensure book is selected
+      }).filter(item => item.book_id !== null)
     };
 
     try {
@@ -847,22 +858,7 @@ export default function CreateBill() {
                   Enable E-Bill Details
                 </label>
               </div>
-
-              {/* E-Bill Info Message */}
-              {billInfo.isEbill && (
-                <div className="col-span-1 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
-                  <span className="bg-blue-100 dark:bg-blue-800 p-1 rounded-full">⚡</span>
-                  <div>
-                    {billInfo.irn ? (
-                       <span><strong>E-Invoice Generated!</strong> IRN and QR Code will be printed on the bill.</span>
-                    ) : (
-                       <span>E-Invoice details (IRN, QR Code) will be automatically generated from Govt Portal when you click <strong>Save</strong>.</span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
-            
             {customer.name && (
               <div className="mt-1 p-3 bg-slate-100 dark:bg-[#151521] rounded-md border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed shadow-inner">
                 <p className="font-bold text-slate-900 dark:text-white text-base mb-1">{customer.name}</p>
