@@ -42,9 +42,9 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
               
               {/* Left Side: Transport Details */}
               <div className="w-[48%] space-y-5 flex flex-col">
-                <div className="bg-[#1e3a8a] text-white px-5 py-3 rounded-xl shadow-sm w-fit mb-2">
-                  <span className="font-semibold text-blue-200 text-xl mr-3">BILL NO :</span> 
-                  <span className="text-4xl font-black">{bill.billInfo?.billNo}</span>
+                <div className="bg-[#1e3a8a] text-white px-4 py-2 rounded-xl shadow-sm w-fit mb-2 flex items-center">
+                  <span className="font-semibold text-blue-200 text-lg mr-2">BILL NO :</span> 
+                  <span className="text-2xl font-black">{bill.billInfo?.billNo}</span>
                 </div>
 
                 <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-5 flex-1 flex flex-col justify-center space-y-5 shadow-sm">
@@ -65,8 +65,10 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
 
               {/* Right Side: TO Address */}
               <div className="w-[52%] bg-blue-50/50 border border-blue-200 rounded-xl p-5 pl-6 relative shadow-sm flex flex-col">
-                <div className="absolute top-0 right-0 bg-[#1e3a8a] text-white px-5 py-1.5 rounded-bl-xl rounded-tr-xl font-bold tracking-widest uppercase text-sm shadow-sm">
-                  Ship To
+                <div className="flex justify-start mb-1">
+                  <div className="bg-[#1e3a8a] text-white px-4 py-1 rounded-md font-bold tracking-widest uppercase text-sm shadow-sm">
+                    DELIVERY ADDRESS
+                  </div>
                 </div>
                 <div className="space-y-1.5 text-gray-800 font-bold text-xl leading-snug pt-3 flex-1 flex flex-col">
                   {printName && (
@@ -88,8 +90,11 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
 
             {/* Bottom Section: FROM Address */}
             <div className="bg-slate-50 rounded-xl p-2 px-4 border border-slate-200 shadow-sm flex items-center justify-between relative z-10 flex-shrink-0">
-              <div className="w-[28%] flex justify-center border-r-2 border-slate-200 pr-4 items-center">
-                <img src="/DP-logo.png" alt="Dolphin Publications" className="w-full max-w-[180px] object-contain drop-shadow-md" />
+              <div className="w-[28%] flex flex-col justify-center border-r-2 border-slate-200 pr-4 items-center relative overflow-hidden rounded-l-xl">
+                <div className="absolute top-0 left-0 bg-[#1e3a8a] text-white px-4 py-1 rounded-br-lg font-bold tracking-widest uppercase text-xs shadow-sm z-20">
+                  FROM
+                </div>
+                <img src="/DP-logo.png" alt="Dolphin Publications" className="w-full max-w-[180px] object-contain drop-shadow-md mt-3" />
               </div>
               
               <div className="w-[72%] flex flex-col items-center text-center pl-4 justify-center py-1">
