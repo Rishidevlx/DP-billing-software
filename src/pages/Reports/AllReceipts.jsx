@@ -82,6 +82,11 @@ export default function AllReceipts() {
             }
           }
           
+          // Move to recycle bin
+          if (fullReceipt) {
+            await moveToRecycleBin(fullReceipt, 'RECEIPT');
+          }
+          
           // Delete the receipt
           await receiptsApi.delete(receipt.id);
           loadReceipts();

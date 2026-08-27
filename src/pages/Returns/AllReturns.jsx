@@ -56,7 +56,7 @@ export default function AllReturns() {
   const handleDelete = (id) => {
     Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this! The returned stock will be deducted back.",
+      text: "You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -65,6 +65,11 @@ export default function AllReturns() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          const returnsData = await returnsApi.getAll();
+          const itemToRecycle = returnsData.find(r => r.id === id);
+          if (itemToRecycle) {
+            await moveToRecycleBin(itemToRecycle, 'RETURN_BILL');
+          }
           await returnsApi.delete(id);
           loadReturns();
           Swal.fire('Deleted!', 'Credit Note has been deleted.', 'success');

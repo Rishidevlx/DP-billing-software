@@ -93,6 +93,8 @@ export default function AllBills() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          const itemToRecycle = await billsApi.getById(id);
+          await moveToRecycleBin(itemToRecycle, 'BILL');
           await billsApi.delete(id);
           setBills(prev => prev.filter(b => b.id !== id));
           Swal.fire('Deleted!', 'The bill has been deleted.', 'success');

@@ -4,7 +4,7 @@ import { Printer, FileDown } from 'lucide-react';
 import { exportHTMLToDoc } from '../../utils/exportToWord';
 import { billsApi, clientsApi, receiptsApi, booksApi } from '../../services/api';
 
-const PrintCustomerLabels = React.forwardRef(({ clients, getClientAliases }, ref) => {
+const PrintCustomerLabels = React.forwardRef(({ clients, getClientAliases, showAlias }, ref) => {
   return (
     <div ref={ref} className="bg-white text-black" style={{ fontFamily: 'Arial, sans-serif' }}>
       <style type="text/css" media="print">
@@ -20,7 +20,7 @@ const PrintCustomerLabels = React.forwardRef(({ clients, getClientAliases }, ref
       
       <div className="label-grid p-2 print:p-0">
         {clients.map((c, i) => {
-          const aliases = getClientAliases(c.ledgerName);
+          const aliases = showAlias ? getClientAliases(c.ledgerName) : '';
           return (
             <div key={i} className="label-cell rounded-sm shadow-sm print:shadow-none print:rounded-none bg-white">
               <div className="label-text">
@@ -87,11 +87,15 @@ export default function CustomerReport() {
         }));
         
         // Map bills to match expected structure
-        const mappedBills = billsData.map(b => ({
-          ...b,
-          billInfo: { billNo: b.bill_no, date: b.date },
-          totals: { amount: b.net_amount }
-        }));
+        const mappedBills = billsData.map(b => {
+          const customer = clientsData.find(c => c.id === b.customer_id);
+          return {
+            ...b,
+            billInfo: { billNo: b.bill_no, date: b.date },
+            customer: { name: customer?.name },
+            totals: { amount: b.net_amount }
+          };
+        });
         
         setClients(mappedClients);
         setBills(mappedBills);
@@ -134,35 +138,40 @@ export default function CustomerReport() {
 
   const currentYear = new Date().getFullYear();
 
-  // Pre-calculate pending balances if "PAYMENT PENDING" is selected
   const customerPendingMap = useMemo(() => {
     if (selectedType !== 'PAYMENT PENDING') return {};
     
-    const billRecdMap = {};
-    receipts.forEach(receipt => {
-      if (receipt.allocations) {
-        Object.entries(receipt.allocations).forEach(([billId, alloc]) => {
-          if (!billRecdMap[billId]) billRecdMap[billId] = 0;
-          billRecdMap[billId] += parseFloat(alloc) || 0;
-        });
+    const pendingMap = {};
+    
+    // 1. Opening Balance
+    clients.forEach(c => {
+      if (c.ledgerName) {
+        pendingMap[c.ledgerName] = parseFloat(c.opening_balance || c.openingBalance || 0);
       }
     });
 
-    const pendingMap = {};
+    // 2. Add Bills
     bills.forEach(bill => {
       const custName = bill.customer?.name;
-      if (!custName) return;
-      
-      const billAmt = parseFloat(bill.totals?.amount) || 0;
-      const recdAmt = billRecdMap[bill.id] || 0;
-      const pendingAmt = billAmt - recdAmt;
-      
-      if (!pendingMap[custName]) pendingMap[custName] = 0;
-      pendingMap[custName] += pendingAmt;
+      if (custName) {
+        if (!pendingMap[custName]) pendingMap[custName] = 0;
+        pendingMap[custName] += parseFloat(bill.totals?.amount) || 0;
+      }
     });
-    
+
+    // 3. Subtract Receipts
+    receipts.forEach(receipt => {
+      const custName = clients.find(c => c.id === receipt.customer_id)?.ledgerName;
+      if (custName) {
+        if (!pendingMap[custName]) pendingMap[custName] = 0;
+        pendingMap[custName] -= parseFloat(receipt.amount) || 0;
+      }
+    });
+
+    // Note: If returns are considered as credit, they should also be subtracted, but this is a simplified reliable pending check.
+
     return pendingMap;
-  }, [selectedType, bills, receipts]);
+  }, [selectedType, bills, receipts, clients]);
 
   // Filtered Data
   const filteredClients = useMemo(() => {
@@ -375,7 +384,8 @@ export default function CustomerReport() {
           <PrintCustomerLabels 
             ref={printRef} 
             clients={filteredClients} 
-            getClientAliases={getClientAliases} 
+            getClientAliases={getClientAliases}
+            showAlias={isActiveList}
           />
         </div>
       </div>

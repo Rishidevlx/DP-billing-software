@@ -35,7 +35,7 @@ const PrintCustomerWiseReport = React.forwardRef(({ groupedData, dateFrom, dateT
     <div ref={ref} className="p-8 bg-white text-black min-h-screen print:p-4" style={{ fontFamily: 'Arial, sans-serif' }}>
       <style type="text/css" media="print">
         {`
-          @page { size: A4 landscape; margin: 15mm; }
+          @page { size: A4 portrait; margin: 15mm; }
           body { -webkit-print-color-adjust: exact; color-adjust: exact; }
           .print-table th, .print-table td { border-bottom: 1px dashed #ccc; padding: 4px 8px; }
           .print-table { width: 100%; border-collapse: collapse; }
