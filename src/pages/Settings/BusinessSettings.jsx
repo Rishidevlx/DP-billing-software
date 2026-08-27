@@ -139,6 +139,7 @@ export default function BusinessSettings() {
         try {
           await settingsApi.save('digitalSignature', base64String);
           setDigitalSignature(base64String);
+          localStorage.setItem('digitalSignature', base64String);
           Swal.fire({ title: 'Success', text: 'Signature updated successfully!', icon: 'success', timer: 1500, showConfirmButton: false });
         } catch (err) {
           Swal.fire('Error', 'Failed to save signature', 'error');
@@ -164,6 +165,7 @@ export default function BusinessSettings() {
     try {
       await settingsApi.delete('digitalSignature');
       setDigitalSignature(null);
+      localStorage.removeItem('digitalSignature');
       Swal.fire({ title: 'Removed', text: 'Signature removed.', icon: 'success', timer: 1500, showConfirmButton: false });
     } catch (err) {
       Swal.fire('Error', 'Failed to remove signature', 'error');

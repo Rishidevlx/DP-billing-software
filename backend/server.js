@@ -733,6 +733,43 @@ app.get('/api/returns', async (req, res) => {
   }
 });
 
+app.put('/api/returns/:id', async (req, res) => {
+  const { id } = req.params;
+  const { return_no, date, customer_id, transport, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, items } = req.body;
+  try {
+    // 1. Fetch old items to reverse stock
+    const [oldItems] = await pool.query('SELECT * FROM return_items WHERE return_id=?', [id]);
+    for (const oldItem of oldItems) {
+      // Reversing a return means decreasing stock
+      await pool.query('UPDATE books SET stock = stock - ? WHERE id = ?', [oldItem.qty, oldItem.book_id]);
+    }
+
+    // 2. Update returns table
+    await pool.query(
+      'UPDATE returns SET return_no=?, date=?, customer_id=?, transport=?, lr_no=?, lr_date=?, bundles=?, gross_amount=?, discount_percent=?, discount_amount=?, freight=?, round_off=?, net_amount=?, created_by=? WHERE id=?',
+      [return_no, date, customer_id, transport, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, id]
+    );
+
+    // 3. Delete old return_items
+    await pool.query('DELETE FROM return_items WHERE return_id=?', [id]);
+
+    // 4. Insert new items and increase stock
+    if (items && items.length > 0) {
+      for (const item of items) {
+        await pool.query(
+          'INSERT INTO return_items (return_id, book_id, qty, rate, amount, teachers_copy) VALUES (?, ?, ?, ?, ?, ?)',
+          [id, item.book_id, item.qty, item.rate, item.amount, item.teachers_copy || 0]
+        );
+        // Returns increase stock
+        await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [item.qty, item.book_id]);
+      }
+    }
+    res.json({ message: 'Return updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/returns', async (req, res) => {
   const { return_no, date, customer_id, transport, lr_no, lr_date, bundles, gross_amount, discount_percent, discount_amount, freight, round_off, net_amount, created_by, items } = req.body;
   try {

@@ -80,6 +80,11 @@ export const returnsApi = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   })),
+  update: async (id, data) => handleResponse(await fetch(`${API_URL}/returns/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })),
   delete: async (id) => handleResponse(await fetch(`${API_URL}/returns/${id}`, { method: 'DELETE' }))
 };
 

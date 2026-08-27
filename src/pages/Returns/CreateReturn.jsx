@@ -200,8 +200,7 @@ export default function CreateReturn() {
 
     try {
       if (isEditMode) {
-        alert('Editing existing returns on API is not implemented yet.');
-        return;
+        await returnsApi.update(id, payload);
       } else {
         await returnsApi.create(payload);
       }

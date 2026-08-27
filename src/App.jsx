@@ -41,9 +41,24 @@ import Guidance from './pages/Guidance/Guidance';
 
 import { booksList } from './seedBooks';
 
+import { settingsApi } from './services/api';
+
 function App() {
   useEffect(() => {
-    // LocalStorage initialization logic has been moved to database APIs and server migrations.
+    // Fetch global business settings and populate localStorage for templates
+    settingsApi.getAll().then(data => {
+      const sigSet = data.find(s => s.setting_key === 'digitalSignature');
+      if (sigSet && sigSet.setting_value) {
+        localStorage.setItem('digitalSignature', sigSet.setting_value);
+      } else {
+        localStorage.removeItem('digitalSignature');
+      }
+      
+      const tplSet = data.find(s => s.setting_key === 'invoiceTemplate');
+      if (tplSet && tplSet.setting_value) {
+        localStorage.setItem('invoiceTemplate', tplSet.setting_value);
+      }
+    }).catch(err => console.error('Failed to load global settings', err));
   }, []);
 
   return (
