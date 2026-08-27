@@ -50,9 +50,12 @@ export default function AllStocks() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          alert('Delete API for stocks not implemented yet.');
+          await stocksApi.delete(id);
+          Swal.fire('Deleted!', 'Stock entry has been deleted.', 'success');
+          loadEntries();
         } catch (e) {
           console.error(e);
+          Swal.fire('Error', 'Failed to delete stock entry', 'error');
         }
       }
     });

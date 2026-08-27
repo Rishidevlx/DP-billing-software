@@ -19,34 +19,38 @@ export default function StockEntry() {
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
 
   useEffect(() => {
-    booksApi.getAll().then(data => {
-      const mapped = data.map(b => ({
-        id: b.id,
-        itemCode: b.alias_name || '',
-        itemName: b.book_name || '',
-        currentStock: b.stock || 0
-      }));
-      setBooksList(mapped);
-    }).catch(console.error);
+    const fetchData = async () => {
+      try {
+        const books = await booksApi.getAll();
+        const mappedBooks = books.map(b => ({
+          id: b.id,
+          itemCode: b.alias_name || '',
+          itemName: b.book_name || '',
+          currentStock: b.stock || 0
+        }));
+        setBooksList(mappedBooks);
 
-    if (id) {
-      setIsEditMode(true);
-      stocksApi.getAll().then(entries => {
-         const entryToEdit = entries.find(e => e.id.toString() === id);
-         if (entryToEdit) {
+        if (id) {
+          setIsEditMode(true);
+          const entries = await stocksApi.getAll();
+          const entryToEdit = entries.find(e => e.id.toString() === id);
+          if (entryToEdit) {
+            const relatedBook = mappedBooks.find(b => b.id === entryToEdit.book_id);
             setOriginalEntry(entryToEdit);
             setItems([{
               id: entryToEdit.id,
-              itemCode: '', // Would need lookup if we want
-              itemName: '', // Would need lookup if we want
+              itemCode: relatedBook ? relatedBook.itemCode : '',
+              itemName: relatedBook ? relatedBook.itemName : '',
               date: entryToEdit.date,
               quantity: entryToEdit.qty
             }]);
-            // Re-mapping itemName is tricky here without books array being ready.
-            // Ideally backend would return book details for stock entry.
-         }
-      }).catch(console.error);
-    }
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchData();
   }, [id]);
 
   const handleAddItem = () => {
@@ -113,7 +117,36 @@ export default function StockEntry() {
 
     try {
       if (isEditMode) {
-        alert('Edit API for stocks is not implemented yet.');
+        for (const item of validItems) {
+          let bookId = null;
+          let book = booksList.find(b => b.itemName === item.itemName);
+          if (book) {
+            bookId = book.id;
+          } else {
+            const res = await booksApi.create({
+              book_name: item.itemName,
+              alias_name: item.itemCode || '',
+              std: '',
+              subject: '',
+              medium: '',
+              price: 0,
+              stock: 0
+            });
+            bookId = res.id;
+          }
+          
+          await stocksApi.update(id, {
+             date: item.date,
+             book_id: bookId,
+             qty: item.quantity,
+             type: originalEntry?.type || 'ADD',
+             remarks: originalEntry?.remarks || 'Stock Inward',
+             created_by: originalEntry?.created_by || 'Admin'
+          });
+        }
+        Swal.fire('Success', 'Stock Entry updated successfully!', 'success').then(() => {
+          navigate('/stocks/all');
+        });
         return;
       }
 
@@ -153,9 +186,20 @@ export default function StockEntry() {
       
     } catch (e) {
        console.error(e);
-       Swal.fire('Error', 'Failed to save stock entries to database', 'error');
+       Swal.fire('Error', e.message || 'Failed to save stock entries to database', 'error');
     }
   };
+
+  useEffect(() => {
+    const handleKeyDownGlobal = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDownGlobal);
+    return () => window.removeEventListener('keydown', handleKeyDownGlobal);
+  }, [items, isEditMode, booksList]);
 
   return (
     <div className="max-w-5xl mx-auto pb-10">

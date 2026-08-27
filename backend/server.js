@@ -911,6 +911,57 @@ app.post('/api/stock_entries', async (req, res) => {
   }
 });
 
+app.put('/api/stock_entries/:id', async (req, res) => {
+  const { id } = req.params;
+  const { date, book_id, qty, type, remarks, created_by } = req.body;
+  try {
+    const [oldEntries] = await pool.query('SELECT * FROM stock_entries WHERE id=?', [id]);
+    if (oldEntries.length > 0) {
+       const oldEntry = oldEntries[0];
+       if (oldEntry.type === 'ADD') {
+          await pool.query('UPDATE books SET stock = stock - ? WHERE id = ?', [oldEntry.qty, oldEntry.book_id]);
+       } else if (oldEntry.type === 'DEDUCT') {
+          await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [oldEntry.qty, oldEntry.book_id]);
+       }
+    }
+
+    await pool.query(
+      'UPDATE stock_entries SET date=?, book_id=?, qty=?, type=?, remarks=?, created_by=? WHERE id=?',
+      [date, book_id, qty, type, remarks, created_by, id]
+    );
+
+    if (type === 'ADD') {
+        await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [qty, book_id]);
+    } else if (type === 'DEDUCT') {
+        await pool.query('UPDATE books SET stock = stock - ? WHERE id = ?', [qty, book_id]);
+    }
+    
+    res.json({ message: 'Stock entry updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/stock_entries/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [oldEntries] = await pool.query('SELECT * FROM stock_entries WHERE id=?', [id]);
+    if (oldEntries.length > 0) {
+       const oldEntry = oldEntries[0];
+       if (oldEntry.type === 'ADD') {
+          await pool.query('UPDATE books SET stock = stock - ? WHERE id = ?', [oldEntry.qty, oldEntry.book_id]);
+       } else if (oldEntry.type === 'DEDUCT') {
+          await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [oldEntry.qty, oldEntry.book_id]);
+       }
+    }
+    
+    await pool.query('DELETE FROM stock_entries WHERE id=?', [id]);
+    res.json({ message: 'Stock entry deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 
 // ==========================================
