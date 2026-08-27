@@ -331,100 +331,102 @@ const Template1 = forwardRef(({ data, type = 'bill' }, ref) => {
              </div>
           </div>
 
-          <div className="relative flex items-center py-2 mb-1">
-             <div className="flex-1 border-t-2 border-dashed border-gray-400"></div>
-             <div className="px-2 bg-white flex items-center gap-1 text-gray-500 font-bold text-[12px]">
-                <Scissors className="w-3.5 h-3.5" /> CUT HERE
-             </div>
-             <div className="flex-1 border-t-2 border-dashed border-gray-400"></div>
-          </div>
+          <div className="break-inside-avoid w-full flex flex-col" style={{ pageBreakInside: 'avoid' }}>
+            <div className="relative flex items-center py-2 mb-1">
+               <div className="flex-1 border-t-2 border-dashed border-gray-400"></div>
+               <div className="px-2 bg-white flex items-center gap-1 text-gray-500 font-bold text-[12px]">
+                  <Scissors className="w-3.5 h-3.5" /> CUT HERE
+               </div>
+               <div className="flex-1 border-t-2 border-dashed border-gray-400"></div>
+            </div>
 
-          <div className="border border-[#114b4c] rounded-sm flex h-[115px] bg-gray-50/30">
-             <div className="w-[30px] bg-[#114b4c] text-white flex items-center justify-center relative overflow-hidden shrink-0">
-                <span className="transform -rotate-90 whitespace-nowrap text-[12px] font-bold tracking-widest absolute">
-                   RECEIPT / PAYMENT SLIP
-                </span>
-             </div>
-             
-             <div className="flex-1 p-2 flex gap-4 text-[12px]">
-                <div className="w-[50%] flex flex-col font-medium pr-2 uppercase">
-                   <div className="flex justify-between font-bold mb-0.5">
-                      <span>To :</span>
-                      <span>Mob. No : {customer?.mobile || customer?.phone}</span>
-                   </div>
-                   {customer?.school && <p className="font-bold">{customer?.school}</p>}
-                   <p>{customer?.address1}</p>
-                   {customer?.address2 && <p>{customer?.address2}</p>}
-                   <p>{customer?.city}</p>
-                   {customer?.district && <p>{customer?.district}</p>}
-                   <p><span className="font-bold">GST NO : </span> {customer?.gstin || "-"}</p>
-                   <p><span className="font-bold">Phone No : </span> {customer?.phone}</p>
-                </div>
-                
-                <div className="w-[50%] flex flex-col justify-between font-medium pl-2 border-l border-gray-200">
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">Bill No</span>
-                      <span>: {info?.returnNo || info?.billNo}</span>
-                   </div>
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">Transport</span>
-                      <span className="uppercase">: {info?.transport}</span>
-                   </div>
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">Destination</span>
-                      <span className="uppercase">: {info?.destination}</span>
-                   </div>
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">No. of Bundles</span>
-                      <span>: {info?.bundles}</span>
-                   </div>
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">LR No</span>
-                      <span>: {info?.lrNo}</span>
-                   </div>
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">LR Date</span>
-                      <span>: {info?.lrDate}</span>
-                   </div>
-                   <div className="flex">
-                      <span className="w-[35%] font-bold">Booking</span>
-                      <span className="font-bold">: PAID <span className="text-[#d97706]">/ TO PAY</span></span>
-                   </div>
-                </div>
-             </div>
+            <div className="border border-[#114b4c] rounded-sm flex h-[115px] bg-gray-50/30">
+               <div className="w-[30px] bg-[#114b4c] text-white flex items-center justify-center relative overflow-hidden shrink-0">
+                  <span className="transform -rotate-90 whitespace-nowrap text-[12px] font-bold tracking-widest absolute">
+                     RECEIPT / PAYMENT SLIP
+                  </span>
+               </div>
+               
+               <div className="flex-1 p-2 flex gap-4 text-[12px]">
+                  <div className="w-[50%] flex flex-col font-medium pr-2 uppercase">
+                     <div className="flex justify-between font-bold mb-0.5">
+                        <span>To :</span>
+                        <span>Mob. No : {customer?.mobile || customer?.phone}</span>
+                     </div>
+                     {customer?.school && <p className="font-bold">{customer?.school}</p>}
+                     <p>{customer?.address1}</p>
+                     {customer?.address2 && <p>{customer?.address2}</p>}
+                     <p>{customer?.city}</p>
+                     {customer?.district && <p>{customer?.district}</p>}
+                     <p><span className="font-bold">GST NO : </span> {customer?.gstin || "-"}</p>
+                     <p><span className="font-bold">Phone No : </span> {customer?.phone}</p>
+                  </div>
+                  
+                  <div className="w-[50%] flex flex-col justify-between font-medium pl-2 border-l border-gray-200">
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">Bill No</span>
+                        <span>: {info?.returnNo || info?.billNo}</span>
+                     </div>
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">Transport</span>
+                        <span className="uppercase">: {info?.transport}</span>
+                     </div>
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">Destination</span>
+                        <span className="uppercase">: {info?.destination}</span>
+                     </div>
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">No. of Bundles</span>
+                        <span>: {info?.bundles}</span>
+                     </div>
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">LR No</span>
+                        <span>: {info?.lrNo}</span>
+                     </div>
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">LR Date</span>
+                        <span>: {info?.lrDate}</span>
+                     </div>
+                     <div className="flex">
+                        <span className="w-[35%] font-bold">Booking</span>
+                        <span className="font-bold">: PAID <span className="text-[#d97706]">/ TO PAY</span></span>
+                     </div>
+                  </div>
+               </div>
 
-             <div className="w-[180px] p-2 flex flex-col justify-between items-center border-l border-gray-200 bg-white">
-                <div className="w-full border border-gray-300 rounded-sm p-1.5 flex flex-col items-center mt-1">
-                   <span className="text-[12px] font-bold text-gray-700">AMOUNT PAYABLE</span>
-                   <span className="text-[16px] font-bold text-[#114b4c]">₹ {netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-                
-                <div className="w-full space-y-4 text-[12px] font-bold">
-                   <div className="flex justify-between items-end border-b border-gray-400 pb-0.5">
-                      <span>Date</span>
-                      <span>:</span>
-                   </div>
-                   <div className="flex justify-between items-end border-b border-gray-400 pb-0.5">
-                      <span>Signature</span>
-                      <span>:</span>
-                   </div>
-                </div>
-             </div>
-          </div>
+               <div className="w-[180px] p-2 flex flex-col justify-between items-center border-l border-gray-200 bg-white">
+                  <div className="w-full border border-gray-300 rounded-sm p-1.5 flex flex-col items-center mt-1">
+                     <span className="text-[12px] font-bold text-gray-700">AMOUNT PAYABLE</span>
+                     <span className="text-[16px] font-bold text-[#114b4c]">₹ {netAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  </div>
+                  
+                  <div className="w-full space-y-4 text-[12px] font-bold">
+                     <div className="flex justify-between items-end border-b border-gray-400 pb-0.5">
+                        <span>Date</span>
+                        <span>:</span>
+                     </div>
+                     <div className="flex justify-between items-end border-b border-gray-400 pb-0.5">
+                        <span>Signature</span>
+                        <span>:</span>
+                     </div>
+                  </div>
+               </div>
+            </div>
 
-          <div className="mt-2 bg-[#114b4c] text-white text-[12px] font-bold px-4 py-1 flex justify-between items-center rounded-sm">
-             <div className="flex items-center gap-1">
-                <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                Goods once sold will not be taken back.
-             </div>
-             <div className="flex gap-16">
-                <span>E. & O.E.</span>
-                <div className="flex gap-1 items-center opacity-70">
-                   {[...Array(6)].map((_, i) => (
-                     <div key={i} className="w-1 h-1 bg-white rounded-full"></div>
-                   ))}
-                </div>
-             </div>
+            <div className="mt-2 bg-[#114b4c] text-white text-[12px] font-bold px-4 py-1 flex justify-between items-center rounded-sm">
+               <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                  Goods once sold will not be taken back.
+               </div>
+               <div className="flex gap-16">
+                  <span>E. & O.E.</span>
+                  <div className="flex gap-1 items-center opacity-70">
+                     {[...Array(6)].map((_, i) => (
+                       <div key={i} className="w-1 h-1 bg-white rounded-full"></div>
+                     ))}
+                  </div>
+               </div>
+            </div>
           </div>
 
         </div>

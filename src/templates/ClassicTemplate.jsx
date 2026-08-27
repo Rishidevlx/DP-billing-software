@@ -37,7 +37,7 @@ const ClassicTemplate = forwardRef(({ data, type = 'bill' }, ref) => {
   };
 
   return (
-    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', minHeight: '355mm', padding: '8mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', height: '375mm', minHeight: '375mm', maxHeight: '375mm', padding: '8mm', boxSizing: 'border-box' }}>
       <style>{`
         @media print {
           @page { margin: 0; }
@@ -47,13 +47,13 @@ const ClassicTemplate = forwardRef(({ data, type = 'bill' }, ref) => {
       `}</style>
 
       {/* Outer Border */}
-      <div className="border-2 border-slate-800 flex flex-col" style={{ height: '271mm', pageBreakInside: 'avoid' }}>
+      <div className="border-2 border-slate-800 flex flex-col" style={{ height: '315mm', minHeight: '315mm', maxHeight: '315mm', pageBreakInside: 'avoid' }}>
 
         {/* HEADER SECTION */}
-        <div className="flex border-b-2 border-slate-800 h-[170px]">
+        <div className="flex border-b-2 border-slate-800 h-[145px]">
           <div className="flex-1 flex border-r-2 border-slate-800 p-1">
             <div className="w-[190px] flex justify-center items-center shrink-0">
-              <img src="/DP-logo.png" alt="Logo" className="w-[180px] h-auto object-contain max-h-[145px]" />
+              <img src="/DP-logo.png" alt="Logo" className="w-[180px] h-auto object-contain max-h-[120px]" />
             </div>
             <div className="flex-1 text-center flex flex-col justify-center">
               <h3 className="font-bold text-sm tracking-widest uppercase text-red-700">
@@ -270,18 +270,18 @@ const ClassicTemplate = forwardRef(({ data, type = 'bill' }, ref) => {
           <span className="uppercase">{numberToWords(Math.round(totals?.netAmount || totals?.amount || 0))}</span>
         </div>
 
-        <div className="flex justify-between p-2 pb-4 h-24 relative">
+        <div className="flex justify-between p-2 pb-2 h-16 relative">
           <div className="w-1/2">
             <h4 className="text-blue-800 font-bold text-sm underline mb-1">{isReturn ? "Notes" : "Terms and Conditions"}</h4>
             <p className="text-xs font-semibold">1. {isReturn ? "This return invoice reduces the total balance due by the customer." : "If you wish to return the books, you must return them within a month."}</p>
           </div>
           <div className="w-1/2 flex flex-col justify-between items-end">
             <h4 className="text-blue-800 font-bold text-sm">For DOLPHIN PUBLICATIONS</h4>
-            <div className="flex flex-col items-center relative mt-8">
+            <div className="flex flex-col items-center relative mt-4">
               {digitalSignature && (
-                <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-4 left-1/2 -translate-x-1/2 max-h-[60px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
+                <img src={digitalSignature} alt="Digital Signature" className="absolute bottom-4 left-1/2 -translate-x-1/2 max-h-[50px] max-w-[150px] object-contain opacity-90" style={{ pointerEvents: 'none' }} />
               )}
-              <span className="font-bold text-sm mt-8 relative z-10">Authorised Signatory</span>
+              <span className="font-bold text-sm mt-4 relative z-10">Authorised Signatory</span>
             </div>
           </div>
         </div>
@@ -292,98 +292,100 @@ const ClassicTemplate = forwardRef(({ data, type = 'bill' }, ref) => {
 
       </div>
 
-      {/* CUT LINE */}
-      <div className="relative flex items-center justify-center opacity-50" style={{ height: '5mm', marginTop: '1mm', marginBottom: '1mm' }}>
-        <div className="absolute w-full border-t-2 border-dashed border-slate-600"></div>
-        <span className="bg-white px-2 text-slate-600 text-lg relative z-10" style={{ transform: 'rotate(180deg)' }}>✂️</span>
-      </div>
-
-      {/* TEAR-OFF SLIP (Below Authorised Signatory) */}
-      <div className="border-2 border-b-4 border-slate-800 flex font-bold text-sm bg-slate-100 tear-off" style={{ height: '53mm' }}>
-        {/* Left Side: Address */}
-        <div className="w-1/2 border-r-2 border-slate-800 pt-2 pb-1 px-2 flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between text-blue-800 mb-1">
-              <span>{isReturn ? "RETURN FROM :" : "To :"}</span>
-              {customer?.mobile && <span className="text-slate-800">Mob. No : {customer.mobile}</span>}
-            </div>
-            <div className="text-slate-900 uppercase leading-snug">
-              <p>{customer?.school || ""}</p>
-              <p>{customer?.address1 || ""}</p>
-              <p>{customer?.address2 || ""}</p>
-              <p>{customer?.district || ""}</p>
-              <p>Tamil Nadu (Code : 33)</p>
-            </div>
-          </div>
+      <div className="break-inside-avoid w-full" style={{ pageBreakInside: 'avoid' }}>
+        {/* CUT LINE */}
+        <div className="relative flex items-center justify-center opacity-50" style={{ height: '5mm', marginTop: '1mm', marginBottom: '1mm' }}>
+          <div className="absolute w-full border-t-2 border-dashed border-slate-600"></div>
+          <span className="bg-white px-2 text-slate-600 text-lg relative z-10" style={{ transform: 'rotate(180deg)' }}>✂️</span>
         </div>
 
-        {/* Right Side: Details */}
-        <div className="w-1/2 pt-2 pb-1 px-4 relative text-blue-800 flex flex-col gap-0 leading-snug">
-          <div className="flex">
-            <span className="w-28">{isReturn ? "Return No" : "Bill No"}</span>
-            <span className="mr-2">:</span>
-            <span className="text-slate-900">{info?.returnNo || info?.billNo || ""}</span>
+        {/* TEAR-OFF SLIP (Below Authorised Signatory) */}
+        <div className="border-2 border-b-4 border-slate-800 flex font-bold text-sm bg-slate-100 tear-off" style={{ height: '53mm' }}>
+          {/* Left Side: Address */}
+          <div className="w-1/2 border-r-2 border-slate-800 pt-2 pb-1 px-2 flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between text-blue-800 mb-1">
+                <span>{isReturn ? "RETURN FROM :" : "To :"}</span>
+                {customer?.mobile && <span className="text-slate-800">Mob. No : {customer.mobile}</span>}
+              </div>
+              <div className="text-slate-900 uppercase leading-snug">
+                <p>{customer?.school || ""}</p>
+                <p>{customer?.address1 || ""}</p>
+                <p>{customer?.address2 || ""}</p>
+                <p>{customer?.district || ""}</p>
+                <p>Tamil Nadu (Code : 33)</p>
+              </div>
+            </div>
           </div>
-          {isReturn ? (
-            <>
-              <div className="flex">
-                <span className="w-28">Orig Bill No</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.originalBillNo || ""}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28">Transport</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.transport || ""}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28">Reason</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.reason || "STOCK RETURN"}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex">
-                <span className="w-28">Transport</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.transport || ""}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28">Destination</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.destination || ""}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28">No. of Bundles</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900">{info?.bundles || "0"}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28">LR No</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.lrNo || ""}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28">LR Date</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900">{info?.lrDate || info?.date || ""}</span>
-              </div>
-              <div className="flex mt-1">
-                <span className="w-28">E-Way Bill No</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 uppercase">{info?.eWayBillNo || ""}</span>
-              </div>
-              <div className="flex mt-1">
-                <span className="w-28">Booking</span>
-                <span className="mr-2">:</span>
-                <span className="text-slate-900 font-extrabold">PAID / <span className="text-red-600">TO PAY</span></span>
-              </div>
-            </>
-          )}
 
-          <div className="absolute right-2" style={{ top: '' }}>
-            <img src="/DP-logo.png" alt="Logo" className="w-[180px] h-auto object-contain max-h-[145px]" />
+          {/* Right Side: Details */}
+          <div className="w-1/2 pt-2 pb-1 px-4 relative text-blue-800 flex flex-col gap-0 leading-snug">
+            <div className="flex">
+              <span className="w-28">{isReturn ? "Return No" : "Bill No"}</span>
+              <span className="mr-2">:</span>
+              <span className="text-slate-900">{info?.returnNo || info?.billNo || ""}</span>
+            </div>
+            {isReturn ? (
+              <>
+                <div className="flex">
+                  <span className="w-28">Orig Bill No</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.originalBillNo || ""}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28">Transport</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.transport || ""}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28">Reason</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.reason || "STOCK RETURN"}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex">
+                  <span className="w-28">Transport</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.transport || ""}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28">Destination</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.destination || ""}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28">No. of Bundles</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900">{info?.bundles || "0"}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28">LR No</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.lrNo || ""}</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28">LR Date</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900">{info?.lrDate || info?.date || ""}</span>
+                </div>
+                <div className="flex mt-1">
+                  <span className="w-28">E-Way Bill No</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 uppercase">{info?.eWayBillNo || ""}</span>
+                </div>
+                <div className="flex mt-1">
+                  <span className="w-28">Booking</span>
+                  <span className="mr-2">:</span>
+                  <span className="text-slate-900 font-extrabold">PAID / <span className="text-red-600">TO PAY</span></span>
+                </div>
+              </>
+            )}
+
+            <div className="absolute right-2" style={{ top: '' }}>
+              <img src="/DP-logo.png" alt="Logo" className="w-[180px] h-auto object-contain max-h-[145px]" />
+            </div>
           </div>
         </div>
       </div>

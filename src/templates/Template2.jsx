@@ -36,7 +36,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
   };
 
   return (
-    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', minHeight: '355mm', padding: '8mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', height: '375mm', minHeight: '375mm', maxHeight: '375mm', padding: '8mm', boxSizing: 'border-box' }}>
       <style>{`
         @media print {
           @page { margin: 0; }
@@ -46,21 +46,21 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
       `}</style>
 
       {/* Main Container */}
-      <div className="flex flex-col relative" style={{ height: '265mm', pageBreakInside: 'avoid' }}>
+      <div className="flex flex-col relative" style={{ height: '315mm', minHeight: '315mm', maxHeight: '315mm', pageBreakInside: 'avoid' }}>
         
         {/* Header */}
-        <div className="flex justify-between items-start mb-1">
+        <div className="relative flex justify-center items-center mb-1 min-h-[140px]">
           {/* Logo */}
-          <div className="w-[180px] flex-shrink-0 pt-1">
-             <img src={billSettings?.logo || "/DP-logo.png"} alt="Logo" className="w-full h-auto object-contain max-h-[120px]" />
+          <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 w-[220px] flex justify-start">
+             <img src={billSettings?.logo || "/DP-logo.png"} alt="Logo" className="max-w-full h-auto object-contain max-h-[160px]" />
           </div>
 
           {/* Center Info */}
-          <div className="flex-1 flex flex-col items-center justify-center text-[#0c2858]">
+          <div className="flex flex-col items-center justify-center text-[#0c2858] z-10">
              <span className="text-[#f28c18] font-bold text-[14px] tracking-widest uppercase mb-1">
                {isReturn ? "SALES RETURN INVOICE" : "TAX INVOICE"}
              </span>
-             <h1 className="text-3xl font-extrabold tracking-wider uppercase mb-1" style={{ transform: 'scaleY(1.1)' }}>Dolphin Publications</h1>
+             <h1 className="text-3xl font-extrabold tracking-wider uppercase mb-1 text-[#800000]" style={{ transform: 'scaleY(1.1)' }}>Dolphin Publications</h1>
              <p className="text-[13px] font-semibold text-center leading-snug">
                239, Keelapatti Street, Srivilliputtur - 626 125<br/>
                Virudhunagar District, Tamil Nadu (Code : 33)
@@ -75,19 +75,15 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
              </div>
           </div>
 
-          {/* QR Box */}
-          <div className="w-[120px] flex-shrink-0 border border-slate-300 rounded-lg overflow-hidden flex flex-col items-center">
-             <div className="bg-[#0c2858] text-white w-full text-center py-1 text-[13px] font-bold tracking-wider">
-               INVOICE DETAILS
-             </div>
-             <div className="p-2 pb-1 bg-white">
+          {/* QR Box Wrapper */}
+          <div className="absolute right-6 top-1/2 transform -translate-y-1/2 flex justify-end">
+            <div className="border border-slate-300 rounded-lg p-2 bg-white flex items-center justify-center">
                {!isReturn && info?.isEbill && info?.qrCode ? (
-                 <QRCodeCanvas value={info.qrCode} size={70} level={"M"} />
+                 <QRCodeCanvas value={info.qrCode} size={85} level={"M"} />
                ) : (
-                 <div style={{ width: 70, height: 70 }}></div>
+                 <div style={{ width: 85, height: 85 }}></div>
                )}
-             </div>
-             <div className="text-[14px] font-bold text-[#0c2858] pb-1">Scan to Verify</div>
+            </div>
           </div>
         </div>
 
@@ -277,14 +273,14 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
         </div>
 
         {/* GST EXEMPTED GOODS ROW */}
-        <div className="flex font-bold text-[13px] mb-2 rounded-md overflow-hidden border border-[#0c2858]">
-          <div className="flex-1 bg-[#0c2858] text-white px-3 py-1.5">{isReturn ? "TOTAL RETURN AMOUNT DEDUCTED" : "GST EXEMPTED GOODS"}</div>
-          <div className="w-32 text-center py-1.5 text-[#0c2858] bg-[#f8fafc]">{isReturn ? "Net Return Value" : "Net Amount"}</div>
-          <div className="w-24 text-right px-2 py-1.5 bg-[#eff6ff] text-[#0c2858] border-l border-[#0c2858]">{Number(totals?.netAmount || totals?.amount || 0).toFixed(2)}</div>
+        <div className="flex font-bold text-[12px] mb-1 rounded-md overflow-hidden border border-[#0c2858]">
+          <div className="flex-1 bg-[#0c2858] text-white px-3 py-1">{isReturn ? "TOTAL RETURN AMOUNT DEDUCTED" : "GST EXEMPTED GOODS"}</div>
+          <div className="w-32 text-center py-1 text-[#0c2858] bg-[#f8fafc]">{isReturn ? "Net Return Value" : "Net Amount"}</div>
+          <div className="w-24 text-right px-2 py-1 bg-[#eff6ff] text-[#0c2858] border-l border-[#0c2858]">{Number(totals?.netAmount || totals?.amount || 0).toFixed(2)}</div>
         </div>
 
         {/* Amount in words */}
-        <div className="px-2 py-1 font-bold text-[14px] text-[#0c2858] border-b border-slate-300 mb-2">
+        <div className="px-2 py-0.5 font-bold text-[13px] text-[#0c2858] border-b border-slate-300 mb-1">
           Amount (Words) : <span className="text-slate-800 ml-2 uppercase">{numberToWords(Math.round(totals?.netAmount || totals?.amount || 0))}</span>
         </div>
 
@@ -311,96 +307,95 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* CUT LINE */}
-      <div className="relative flex items-center justify-center opacity-70" style={{ height: '6mm' }}>
-        <div className="w-full border-t border-dashed border-slate-400 my-4"></div>
-      </div>
-
-      {/* TEAR-OFF SLIP */}
-      <div className="border border-[#0c2858] rounded-md flex font-bold text-[14px] text-[#0c2858] p-2 relative overflow-hidden" style={{ minHeight: '40mm' }}>
-        
-        {/* Left Side: Address */}
-        <div className="w-1/2 pr-4 flex flex-col justify-start">
-          <div className="flex mb-1">
-            <span className="text-blue-700">{isReturn ? "RETURN FROM :" : "To :"}</span>
-          </div>
-          <div className="text-slate-900 uppercase leading-snug">
-            <p className="font-extrabold tracking-wide">{customer?.printName || customer?.school || customer?.name || ""}</p>
-            <p className="font-semibold text-slate-700">{customer?.address1 || ""}</p>
-            <p className="font-semibold text-slate-700">{customer?.address2 || ""}</p>
-            <p className="font-semibold text-slate-700">{customer?.district || ""}</p>
-            <p className="font-semibold text-slate-700">Tamil Nadu (Code : 33)</p>
-            {customer?.gstin && <p className="mt-1">GST NO : {customer.gstin}</p>}
-            {customer?.phone && <p>Phone No : {customer.phone}</p>}
-            {customer?.mobile && <p className="text-blue-700 font-bold text-[13px] mt-1 normal-case">Mob. No : {customer.mobile}</p>}
-          </div>
+           <div className="break-inside-avoid w-full" style={{ pageBreakInside: 'avoid' }}>
+        {/* CUT LINE */}
+        <div className="relative flex items-center justify-center opacity-70" style={{ height: '6mm' }}>
+          <div className="w-full border-t border-dashed border-slate-400 my-4"></div>
         </div>
 
-        {/* Right Side: Details */}
-        <div className="w-1/2 pl-4 border-l border-slate-300 relative flex justify-between leading-snug">
-          <div className="flex flex-col gap-1 w-[70%]">
-            <div className="flex">
-              <span className="w-24 text-blue-700">{isReturn ? "Return No" : "Bill No"}</span>
-              <span className="mr-2">:</span>
-              <span className="text-slate-900">{info?.returnNo || info?.billNo || ""}</span>
-            </div>
-            {isReturn ? (
-              <>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">Orig Bill No</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900 uppercase">{info?.originalBillNo || ""}</span>
-                </div>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">Reason</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900 uppercase">{info?.reason || "STOCK RETURN"}</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">Transport</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900 uppercase">{info?.transport || ""}</span>
-                </div>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">Destination</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900 uppercase">{info?.destination || ""}</span>
-                </div>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">No. of Bundles</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900">{info?.bundles || "0"}</span>
-                </div>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">LR No</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900 uppercase">{info?.lrNo || ""}</span>
-                </div>
-                <div className="flex">
-                  <span className="w-24 text-blue-700">LR Date</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900">{info?.lrDate || info?.date || ""}</span>
-                </div>
-                <div className="flex mt-1">
-                  <span className="w-24 text-blue-700">Booking</span>
-                  <span className="mr-2">:</span>
-                  <span className="text-slate-900 font-extrabold">PAID / <span className="text-[#f28c18]">TO PAY</span></span>
-                </div>
-              </>
-            )}
-          </div>
+        {/* TEAR-OFF SLIP */}
+        <div className="border border-[#0c2858] rounded-md flex font-bold text-[14px] text-[#0c2858] p-2 relative overflow-hidden" style={{ minHeight: '40mm' }}>
           
-          <div className="absolute right-2 top-[15px] w-[180px]">
-             <img src={billSettings?.logo || "/DP-logo.png"} alt="Logo" className="w-full h-auto object-contain max-h-[120px]" />
+          {/* Left Side: Address */}
+          <div className="w-1/2 pr-4 flex flex-col justify-start">
+            <div className="flex mb-1">
+              <span className="text-blue-700">{isReturn ? "RETURN FROM :" : "To :"}</span>
+            </div>
+            <div className="text-slate-900 uppercase leading-snug">
+              <p className="font-extrabold tracking-wide">{customer?.printName || customer?.school || customer?.name || ""}</p>
+              <p className="font-semibold text-slate-700">{customer?.address1 || ""}</p>
+              <p className="font-semibold text-slate-700">{customer?.address2 || ""}</p>
+              <p className="font-semibold text-slate-700">{customer?.district || ""}</p>
+              <p className="font-semibold text-slate-700">Tamil Nadu (Code : 33)</p>
+              {customer?.gstin && <p className="mt-1">GST NO : {customer.gstin}</p>}
+              {customer?.phone && <p>Phone No : {customer.phone}</p>}
+              {customer?.mobile && <p className="text-blue-700 font-bold text-[13px] mt-1 normal-case">Mob. No : {customer.mobile}</p>}
+            </div>
+          </div>
+
+          {/* Right Side: Details */}
+          <div className="w-1/2 pl-4 border-l border-slate-300 relative flex justify-between leading-snug">
+            <div className="flex flex-col gap-1 w-[70%]">
+              <div className="flex">
+                <span className="w-24 text-blue-700">{isReturn ? "Return No" : "Bill No"}</span>
+                <span className="mr-2">:</span>
+                <span className="text-slate-900">{info?.returnNo || info?.billNo || ""}</span>
+              </div>
+              {isReturn ? (
+                <>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">Orig Bill No</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900 uppercase">{info?.originalBillNo || ""}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">Reason</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900 uppercase">{info?.reason || "STOCK RETURN"}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">Transport</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900 uppercase">{info?.transport || ""}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">Destination</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900 uppercase">{info?.destination || ""}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">No. of Bundles</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900">{info?.bundles || "0"}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">LR No</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900 uppercase">{info?.lrNo || ""}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-24 text-blue-700">LR Date</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900">{info?.lrDate || info?.date || ""}</span>
+                  </div>
+                  <div className="flex mt-1">
+                    <span className="w-24 text-blue-700">Booking</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-slate-900 font-extrabold">PAID / <span className="text-[#f28c18]">TO PAY</span></span>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="absolute right-2 top-[15px] w-[180px]">
+               <img src={billSettings?.logo || "/DP-logo.png"} alt="Logo" className="w-full h-auto object-contain max-h-[120px]" />
+            </div>
           </div>
         </div>
-
-      </div>
+      </div>   </div>
     </div>
   );
 });
