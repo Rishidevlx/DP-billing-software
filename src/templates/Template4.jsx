@@ -1,8 +1,11 @@
 import React, { forwardRef } from 'react';
 
-const MinimalistTemplate = forwardRef(({ billData }, ref) => {
-  if (!billData) return null;
-  const { customer, billInfo, items, totals } = billData;
+const Template4 = forwardRef(({ data, type = 'bill' }, ref) => {
+  if (!data) return null;
+  const isReturn = type === 'return';
+  const info = isReturn ? data.returnInfo : data.billInfo;
+  const { customer, items, totals, billSettings } = data;
+  
   const digitalSignature = localStorage.getItem('digitalSignature');
   
   const padItems = (itemsArray, minLength) => {
@@ -33,7 +36,7 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
               </div>
             </div>
             
-            <h1 className="text-3xl font-bold tracking-[0.2em] text-[#374151]">INVOICE</h1>
+            <h1 className="text-3xl font-bold tracking-[0.2em] text-[#374151] uppercase">{isReturn ? "RETURN" : "INVOICE"}</h1>
           </div>
 
           {/* Light Grey Block for Details */}
@@ -41,36 +44,57 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
             {/* Left side: Issued To & Payment Info */}
             <div className="text-[11px] w-[50%]">
               <div className="mb-6">
-                <p className="font-bold tracking-widest uppercase mb-2">ISSUED TO:</p>
-                <p className="font-bold text-sm">{customer?.name || customer?.school || 'Customer Name'}</p>
-                <p className="mt-1">{customer?.address1}</p>
-                {customer?.address2 && <p>{customer?.address2}</p>}
-                <p>{customer?.district || customer?.city}</p>
-                <p>{customer?.mobile || customer?.phone}</p>
+                <p className="font-bold tracking-widest uppercase mb-2">{isReturn ? "RETURN FROM:" : "ISSUED TO:"}</p>
+                <p className="font-bold text-sm uppercase">{customer?.name || customer?.school || 'Customer Name'}</p>
+                <p className="mt-1 uppercase">{customer?.address1}</p>
+                {customer?.address2 && <p className="uppercase">{customer?.address2}</p>}
+                <p className="uppercase">{customer?.district || customer?.city}</p>
+                <p className="uppercase">{customer?.mobile || customer?.phone}</p>
               </div>
               
+              {!isReturn && (
               <div>
                  <p className="font-bold tracking-widest uppercase mb-2">PAYMENT INFO:</p>
                  <p>Bank: State Bank of India</p>
                  <p>Account Name: Dolphin Publications</p>
                  <p>Account No: 1234567890123</p>
               </div>
+              )}
             </div>
             
             {/* Right side: Invoice Details */}
             <div className="text-[11px] w-[200px] text-right">
               <div className="flex justify-between py-1">
-                <span className="uppercase tracking-widest">INVOICE NO:</span>
-                <span className="font-bold">{billInfo?.billNo}</span>
+                <span className="uppercase tracking-widest">{isReturn ? "RETURN NO:" : "INVOICE NO:"}</span>
+                <span className="font-bold uppercase">{info?.returnNo || info?.billNo}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="uppercase tracking-widest">DATE:</span>
-                <span className="font-bold">{billInfo?.date}</span>
+                <span className="font-bold">{info?.date}</span>
               </div>
-              <div className="flex justify-between py-1">
-                <span className="uppercase tracking-widest">DUE DATE:</span>
-                <span className="font-bold">{billInfo?.date}</span>
-              </div>
+              {isReturn ? (
+                <>
+                  <div className="flex justify-between py-1">
+                    <span className="uppercase tracking-widest">ORIG BILL NO:</span>
+                    <span className="font-bold uppercase">{info?.originalBillNo}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="uppercase tracking-widest">REASON:</span>
+                    <span className="font-bold uppercase">{info?.reason || "STOCK RETURN"}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between py-1">
+                    <span className="uppercase tracking-widest">TRANSPORT:</span>
+                    <span className="font-bold uppercase">{info?.transport}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="uppercase tracking-widest">LR NO:</span>
+                    <span className="font-bold uppercase">{info?.lrNo}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -101,32 +125,32 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
             <div className="w-full border-t border-[#374151] mt-2 pt-4 flex justify-end text-[11px]">
               <div className="w-[200px]">
                 <div className="flex justify-between py-1 font-bold">
-                   <span className="uppercase tracking-widest">SUBTOTAL</span>
-                   <span>₹ {Number(totals?.grossAmount || 0).toFixed(2)}</span>
+                   <span className="uppercase tracking-widest">{isReturn ? "TOTAL QTY" : "SUBTOTAL"}</span>
+                   <span>{isReturn ? totals?.qty : `₹ ${Number(totals?.grossAmount || 0).toFixed(2)}`}</span>
                 </div>
                 
-                {billData.billSettings?.discountAmount > 0 && (
+                {!isReturn && billSettings?.discountAmount > 0 && (
                   <div className="flex justify-between py-1">
                      <span className="uppercase tracking-widest">DISCOUNT</span>
-                     <span>- ₹ {Number(billData.billSettings?.discountAmount || 0).toFixed(2)}</span>
+                     <span>- ₹ {Number(billSettings?.discountAmount || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {billData.billSettings?.freight > 0 && (
+                {!isReturn && billSettings?.freight > 0 && (
                   <div className="flex justify-between py-1">
                      <span className="uppercase tracking-widest">FREIGHT</span>
-                     <span>+ ₹ {Number(billData.billSettings?.freight || 0).toFixed(2)}</span>
+                     <span>+ ₹ {Number(billSettings?.freight || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0 ? (
+                {!isReturn && billSettings?.roundOff && Number(billSettings.roundOff) !== 0 ? (
                   <div className="flex justify-between py-1">
                      <span className="uppercase tracking-widest">ROUND OFF</span>
-                     <span>₹ {Number(billData.billSettings?.roundOff || 0).toFixed(2)}</span>
+                     <span>₹ {Number(billSettings?.roundOff || 0).toFixed(2)}</span>
                   </div>
                 ) : null}
 
                 <div className="flex justify-between py-2 mt-2 font-bold text-sm">
                    <span className="uppercase tracking-widest">TOTAL</span>
-                   <span>₹ {Number(totals?.netAmount || 0).toFixed(2)}</span>
+                   <span>₹ {Number(totals?.netAmount || totals?.amount || 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -135,7 +159,7 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
           {/* Bottom Area */}
           <div className="flex justify-end items-end mt-auto text-center w-[200px] ml-auto">
              <div>
-                <p className="font-bold tracking-widest uppercase text-[10px] mb-8">THANK YOU</p>
+                <p className="font-bold tracking-widest uppercase text-[10px] mb-8">{isReturn ? "ISSUED FOR RETURN" : "THANK YOU"}</p>
                 <div className="h-[40px] relative w-full mb-1 flex justify-center">
                    {digitalSignature ? (
                       <img src={digitalSignature} alt="Signature" className="h-full object-contain mix-blend-multiply" />
@@ -152,4 +176,4 @@ const MinimalistTemplate = forwardRef(({ billData }, ref) => {
   );
 });
 
-export default MinimalistTemplate;
+export default Template4;

@@ -1,8 +1,11 @@
 import React, { forwardRef } from 'react';
 
-const ElegantTemplate = forwardRef(({ billData }, ref) => {
-  if (!billData) return null;
-  const { customer, billInfo, items, totals } = billData;
+const Template3 = forwardRef(({ data, type = 'bill' }, ref) => {
+  if (!data) return null;
+  const isReturn = type === 'return';
+  const info = isReturn ? data.returnInfo : data.billInfo;
+  const { customer, items, totals, billSettings } = data;
+  
   const digitalSignature = localStorage.getItem('digitalSignature');
   
   const padItems = (itemsArray, minLength) => {
@@ -22,6 +25,9 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
         {/* Top Edge Accent */}
         <div className="w-full h-[30px] bg-slate-800 relative">
            <div className="absolute top-0 left-[15%] w-[120px] h-[15px] bg-[#dc2626] skew-x-12 translate-x-4"></div>
+           <div className="absolute top-0 right-4 h-full flex items-center text-white font-bold tracking-widest text-sm px-4">
+              {isReturn ? "RETURN INVOICE" : "TAX INVOICE"}
+           </div>
         </div>
 
         <div className="flex-1 flex flex-col pt-12 pb-6 px-16 relative">
@@ -44,34 +50,49 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
           <div className="flex justify-between items-start mb-12 text-[10px] font-semibold text-slate-600">
             <div className="w-[50%] space-y-6">
               <div>
-                <p className="font-bold text-slate-900 uppercase tracking-widest mb-1 text-[11px]">ISSUED TO:</p>
-                <p className="font-bold text-sm text-slate-800">{customer?.name || customer?.school || 'Customer Name'}</p>
-                <p className="font-normal">{customer?.address1}</p>
-                {customer?.address2 && <p className="font-normal">{customer?.address2}</p>}
-                <p className="font-normal">{customer?.district || customer?.city}</p>
+                <p className="font-bold text-slate-900 uppercase tracking-widest mb-1 text-[11px]">{isReturn ? "RETURN FROM:" : "ISSUED TO:"}</p>
+                <p className="font-bold text-sm text-slate-800 uppercase">{customer?.name || customer?.school || 'Customer Name'}</p>
+                <p className="font-normal uppercase">{customer?.address1}</p>
+                {customer?.address2 && <p className="font-normal uppercase">{customer?.address2}</p>}
+                <p className="font-normal uppercase">{customer?.district || customer?.city}</p>
               </div>
               
+              {!isReturn && (
               <div>
                 <p className="font-bold text-slate-900 uppercase tracking-widest mb-1 text-[11px]">PAY TO:</p>
                 <p className="font-bold text-slate-800">State Bank of India</p>
                 <p className="font-normal">Account Name: Dolphin Publications</p>
                 <p className="font-normal">Account No: 1234567890123</p>
               </div>
+              )}
             </div>
             
             <div className="w-[200px] mt-6">
               <div className="flex justify-between py-1">
-                <span className="font-bold text-slate-900 uppercase tracking-widest">INVOICE NO:</span>
-                <span className="font-bold text-slate-800">{billInfo?.billNo}</span>
+                <span className="font-bold text-slate-900 uppercase tracking-widest">{isReturn ? "RETURN NO:" : "INVOICE NO:"}</span>
+                <span className="font-bold text-slate-800 uppercase">{info?.returnNo || info?.billNo}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="font-bold text-slate-900 uppercase tracking-widest">DATE:</span>
-                <span>{billInfo?.date}</span>
+                <span>{info?.date}</span>
               </div>
-              <div className="flex justify-between py-1">
-                <span className="font-bold text-slate-900 uppercase tracking-widest">DUE DATE:</span>
-                <span>{billInfo?.date}</span>
-              </div>
+              {isReturn ? (
+                <>
+                  <div className="flex justify-between py-1">
+                    <span className="font-bold text-slate-900 uppercase tracking-widest">ORIG BILL NO:</span>
+                    <span className="uppercase">{info?.originalBillNo}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="font-bold text-slate-900 uppercase tracking-widest">REASON:</span>
+                    <span className="uppercase">{info?.reason || "STOCK RETURN"}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between py-1">
+                  <span className="font-bold text-slate-900 uppercase tracking-widest">LR NO:</span>
+                  <span className="uppercase">{info?.lrNo}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -101,32 +122,32 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
             <div className="w-full border-y-2 border-slate-900 mt-2 py-4 flex justify-end text-[11px]">
               <div className="w-[200px]">
                 <div className="flex justify-between py-1 font-bold text-slate-700">
-                   <span className="uppercase tracking-widest">SUBTOTAL</span>
-                   <span>₹ {Number(totals?.grossAmount || 0).toFixed(2)}</span>
+                   <span className="uppercase tracking-widest">{isReturn ? "TOTAL QTY" : "SUBTOTAL"}</span>
+                   <span>{isReturn ? totals?.qty : `₹ ${Number(totals?.grossAmount || 0).toFixed(2)}`}</span>
                 </div>
                 
-                {billData.billSettings?.discountAmount > 0 && (
+                {!isReturn && billSettings?.discountAmount > 0 && (
                   <div className="flex justify-between py-1 font-bold text-slate-700">
                      <span className="uppercase tracking-widest text-[10px]">DISCOUNT</span>
-                     <span>- ₹ {Number(billData.billSettings?.discountAmount || 0).toFixed(2)}</span>
+                     <span>- ₹ {Number(billSettings?.discountAmount || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {billData.billSettings?.freight > 0 && (
+                {!isReturn && billSettings?.freight > 0 && (
                   <div className="flex justify-between py-1 font-bold text-slate-700">
                      <span className="uppercase tracking-widest text-[10px]">FREIGHT</span>
-                     <span>+ ₹ {Number(billData.billSettings?.freight || 0).toFixed(2)}</span>
+                     <span>+ ₹ {Number(billSettings?.freight || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0 ? (
+                {!isReturn && billSettings?.roundOff && Number(billSettings.roundOff) !== 0 ? (
                   <div className="flex justify-between py-1 font-bold text-slate-700">
                      <span className="uppercase tracking-widest text-[10px]">ROUND OFF</span>
-                     <span>₹ {Number(billData.billSettings?.roundOff || 0).toFixed(2)}</span>
+                     <span>₹ {Number(billSettings?.roundOff || 0).toFixed(2)}</span>
                   </div>
                 ) : null}
 
                 <div className="flex justify-between pt-2 mt-2 font-bold text-sm text-slate-900">
                    <span className="uppercase tracking-widest">TOTAL</span>
-                   <span>₹ {Number(totals?.netAmount || 0).toFixed(2)}</span>
+                   <span>₹ {Number(totals?.netAmount || totals?.amount || 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -135,7 +156,7 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
           {/* Bottom Banner */}
           <div className="w-full flex justify-between items-end mt-auto h-[100px] pb-6">
              <div className="font-bold text-sm text-slate-800 w-[50%]">
-                Thank you for your<br/>business!
+                {isReturn ? "Thank you for your cooperation." : "Thank you for your business!"}
              </div>
              
              {/* Signature */}
@@ -165,4 +186,4 @@ const ElegantTemplate = forwardRef(({ billData }, ref) => {
   );
 });
 
-export default ElegantTemplate;
+export default Template3;

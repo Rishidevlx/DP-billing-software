@@ -1,9 +1,10 @@
 import React, { forwardRef, useState, useEffect } from 'react';
-import ClassicTemplate from './templates/ClassicTemplate';
-import ModernTemplate from './templates/ModernTemplate';
-import ElegantTemplate from './templates/ElegantTemplate';
-import MinimalistTemplate from './templates/MinimalistTemplate';
-import VibrantTemplate from './templates/VibrantTemplate';
+import ClassicTemplate from '../../templates/ClassicTemplate';
+import Template1 from '../../templates/Template1';
+import Template2 from '../../templates/Template2';
+import Template3 from '../../templates/Template3';
+import Template4 from '../../templates/Template4';
+import Template5 from '../../templates/Template5';
 import { settingsApi } from '../../services/api';
 
 const PrintInvoice = forwardRef(({ billData }, ref) => {
@@ -25,17 +26,24 @@ const PrintInvoice = forwardRef(({ billData }, ref) => {
   }, []);
 
   switch (template) {
+    case 'template1':
     case 'modern':
-      return <ModernTemplate ref={ref} billData={billData} />;
+      return <Template1 ref={ref} data={billData} type="bill" />;
+    case 'template2':
+    case 'legal':
+      return <Template2 ref={ref} data={billData} type="bill" />;
+    case 'template3':
     case 'elegant':
-      return <ElegantTemplate ref={ref} billData={billData} />;
-    case 'vibrant':
-      return <VibrantTemplate ref={ref} billData={billData} />;
+      return <Template3 ref={ref} data={billData} type="bill" />;
+    case 'template4':
     case 'minimalist':
-      return <MinimalistTemplate ref={ref} billData={billData} />;
+      return <Template4 ref={ref} data={billData} type="bill" />;
+    case 'template5':
+    case 'vibrant':
+      return <Template5 ref={ref} data={billData} type="bill" />;
     case 'classic':
     default:
-      return <ClassicTemplate ref={ref} billData={billData} />;
+      return <ClassicTemplate ref={ref} data={billData} type="bill" />;
   }
 });
 

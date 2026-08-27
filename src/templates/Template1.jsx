@@ -1,8 +1,11 @@
 import React, { forwardRef } from 'react';
 
-const ModernTemplate = forwardRef(({ billData }, ref) => {
-  if (!billData) return null;
-  const { customer, billInfo, items, totals } = billData;
+const Template1 = forwardRef(({ data, type = 'bill' }, ref) => {
+  if (!data) return null;
+  const isReturn = type === 'return';
+  const info = isReturn ? data.returnInfo : data.billInfo;
+  const { customer, items, totals, billSettings } = data;
+  
   const digitalSignature = localStorage.getItem('digitalSignature');
   
   const padItems = (itemsArray, minLength) => {
@@ -33,34 +36,53 @@ const ModernTemplate = forwardRef(({ billData }, ref) => {
               <h2 className="font-bold text-xl tracking-wide">Dolphin Publications</h2>
             </div>
             
-            <h1 className="text-5xl font-bold tracking-widest text-[#374151]">INVOICE</h1>
+            <h1 className="text-5xl font-bold tracking-widest text-[#374151] uppercase">{isReturn ? "RETURN" : "INVOICE"}</h1>
           </div>
 
           {/* Details Row */}
           <div className="flex justify-between items-start mb-10 px-4 text-[11px]">
             <div>
-              <p className="font-bold text-[#1e3a8a] mb-2 text-xs">Issued To</p>
-              <p className="font-semibold text-sm mb-1">{customer?.name || customer?.school || 'Customer Name'}</p>
-              <p>{customer?.address1}</p>
-              {customer?.address2 && <p>{customer?.address2}</p>}
-              <p>{customer?.district || customer?.city}</p>
-              <p className="mt-1">{customer?.mobile || customer?.phone}</p>
+              <p className="font-bold text-[#1e3a8a] mb-2 text-xs uppercase">{isReturn ? "Return From" : "Issued To"}</p>
+              <p className="font-semibold text-sm mb-1 uppercase">{customer?.name || customer?.school || 'Customer Name'}</p>
+              <p className="uppercase">{customer?.address1}</p>
+              {customer?.address2 && <p className="uppercase">{customer?.address2}</p>}
+              <p className="uppercase">{customer?.district || customer?.city}</p>
+              <p className="mt-1 uppercase">{customer?.mobile || customer?.phone}</p>
             </div>
             
             <div className="w-[220px]">
-              <p className="font-bold text-[#1e3a8a] mb-2 text-xs">Invoice To</p>
+              <p className="font-bold text-[#1e3a8a] mb-2 text-xs uppercase">{isReturn ? "Return Info" : "Invoice Info"}</p>
               <div className="flex justify-between py-1">
-                <span className="font-semibold">Invoice No:</span>
-                <span>{billInfo?.billNo}</span>
+                <span className="font-semibold">{isReturn ? "Return No:" : "Invoice No:"}</span>
+                <span className="uppercase">{info?.returnNo || info?.billNo}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="font-semibold">Date:</span>
-                <span>{billInfo?.date}</span>
+                <span>{info?.date}</span>
               </div>
-              <div className="flex justify-between py-1">
-                <span className="font-semibold">Due Date:</span>
-                <span>{billInfo?.date}</span>
-              </div>
+              {isReturn ? (
+                <>
+                  <div className="flex justify-between py-1">
+                    <span className="font-semibold">Orig Bill No:</span>
+                    <span className="uppercase">{info?.originalBillNo}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="font-semibold">Reason:</span>
+                    <span className="uppercase">{info?.reason || "Stock Return"}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between py-1">
+                    <span className="font-semibold">Transport:</span>
+                    <span className="uppercase">{info?.transport}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="font-semibold">LR No:</span>
+                    <span className="uppercase">{info?.lrNo}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -90,53 +112,54 @@ const ModernTemplate = forwardRef(({ billData }, ref) => {
             <div className="w-full border-t border-[#f3f4f6] flex justify-end">
               <div className="w-[280px]">
                 <div className="flex justify-between py-2 px-4 text-[11px]">
-                   <span className="font-semibold">Subtotal:</span>
-                   <span>₹ {Number(totals?.grossAmount || 0).toFixed(2)}</span>
+                   <span className="font-semibold">{isReturn ? "Total Qty:" : "Subtotal:"}</span>
+                   <span>{isReturn ? totals?.qty : `₹ ${Number(totals?.grossAmount || 0).toFixed(2)}`}</span>
                 </div>
                 
-                {billData.billSettings?.discountAmount > 0 && (
+                {!isReturn && billSettings?.discountAmount > 0 && (
                   <div className="flex justify-between py-2 px-4 text-[11px]">
                      <span className="font-semibold">Discount:</span>
-                     <span>- ₹ {Number(billData.billSettings?.discountAmount || 0).toFixed(2)}</span>
+                     <span>- ₹ {Number(billSettings?.discountAmount || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {billData.billSettings?.freight > 0 && (
+                {!isReturn && billSettings?.freight > 0 && (
                   <div className="flex justify-between py-2 px-4 text-[11px]">
                      <span className="font-semibold">Freight:</span>
-                     <span>+ ₹ {Number(billData.billSettings?.freight || 0).toFixed(2)}</span>
+                     <span>+ ₹ {Number(billSettings?.freight || 0).toFixed(2)}</span>
                   </div>
                 )}
-                {billData.billSettings?.roundOff && Number(billData.billSettings.roundOff) !== 0 ? (
+                {!isReturn && billSettings?.roundOff && Number(billSettings.roundOff) !== 0 ? (
                   <div className="flex justify-between py-2 px-4 text-[11px]">
                      <span className="font-semibold">Round Off:</span>
-                     <span>₹ {Number(billData.billSettings?.roundOff || 0).toFixed(2)}</span>
+                     <span>₹ {Number(billSettings?.roundOff || 0).toFixed(2)}</span>
                   </div>
                 ) : null}
 
                 <div className="flex justify-between items-center py-3 px-4 bg-[#1e3a8a] text-white font-bold text-[12px] mt-1 rounded-sm">
-                   <span>Total Amount</span>
-                   <span className="text-[14px]">₹ {Number(totals?.netAmount || 0).toFixed(2)}</span>
+                   <span>{isReturn ? "Net Return Value" : "Total Amount"}</span>
+                   <span className="text-[14px]">₹ {Number(totals?.netAmount || totals?.amount || 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>
             
             {/* Payment Information */}
-            <div className="mt-8 text-[11px]">
-               <p className="font-bold text-[#1e3a8a] mb-2">Payment Information</p>
-               <div className="flex max-w-[300px]">
-                  <div className="w-[100px] text-slate-500 space-y-1">
-                     <p>Bank Name:</p>
-                     <p>Account Name:</p>
-                     <p>Account No:</p>
-                  </div>
-                  <div className="font-semibold space-y-1">
-                     <p>State Bank of India</p>
-                     <p>Dolphin Publications</p>
-                     <p>1234567890123</p>
-                  </div>
-               </div>
-            </div>
-
+            {!isReturn && (
+              <div className="mt-8 text-[11px]">
+                 <p className="font-bold text-[#1e3a8a] mb-2">Payment Information</p>
+                 <div className="flex max-w-[300px]">
+                    <div className="w-[100px] text-slate-500 space-y-1">
+                       <p>Bank Name:</p>
+                       <p>Account Name:</p>
+                       <p>Account No:</p>
+                    </div>
+                    <div className="font-semibold space-y-1">
+                       <p>State Bank of India</p>
+                       <p>Dolphin Publications</p>
+                       <p>1234567890123</p>
+                    </div>
+                 </div>
+              </div>
+            )}
           </div>
           
           {/* Bottom Banner */}
@@ -174,4 +197,4 @@ const ModernTemplate = forwardRef(({ billData }, ref) => {
   );
 });
 
-export default ModernTemplate;
+export default Template1;

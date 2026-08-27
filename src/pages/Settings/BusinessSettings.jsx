@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Truck, Building2, PenTool, Upload, LayoutTemplate } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { transportsApi, banksApi, settingsApi } from '../../services/api';
+import ClassicTemplate from '../../templates/ClassicTemplate';
+import Template1 from '../../templates/Template1';
+import Template2 from '../../templates/Template2';
+import Template3 from '../../templates/Template3';
+import Template4 from '../../templates/Template4';
+import Template5 from '../../templates/Template5';
+import { Eye, X } from 'lucide-react';
 
 export default function BusinessSettings() {
   const [transports, setTransports] = useState([]);
@@ -11,6 +18,19 @@ export default function BusinessSettings() {
   const [newBank, setNewBank] = useState({ name: '' });
   const [digitalSignature, setDigitalSignature] = useState(null);
   const [invoiceTemplate, setInvoiceTemplate] = useState('classic');
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewTemplateId, setPreviewTemplateId] = useState(null);
+
+  const dummyBillData = {
+    customer: { name: 'Demo Customer', school: 'Demo School', address1: '123 Demo St', address2: 'Demo Area', district: 'Demo District', gstin: '33DEMOGSTIN', phone: '1234567890', mobile: '9876543210' },
+    billInfo: { billNo: 'DEMO-001', date: new Date().toLocaleDateString('en-GB'), transport: 'DEMO TRANSPORT', destination: 'DEMO DESTINATION', bundles: '10', lrNo: 'LR-123', lrDate: new Date().toLocaleDateString('en-GB'), eWayBillNo: 'EWAY-123' },
+    items: [
+      { itemName: 'Item 1', rate: '100', qty: 5, amount: 500 },
+      { itemName: 'Item 2', rate: '200', qty: 2, amount: 400 }
+    ],
+    totals: { qty: 7, grossAmount: 900, amount: 900, netAmount: 900 },
+    billSettings: { discountPercent: 0, discountAmount: 0, freight: 0, roundOff: 0 }
+  };
 
   const fetchSettingsData = async () => {
     try {
@@ -270,18 +290,25 @@ export default function BusinessSettings() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {[
                 { id: 'classic', name: 'Classic', desc: 'The perfectly tuned traditional format with tear-off slip.' },
-                { id: 'modern', name: 'Modern Professional', desc: 'Clean, contemporary, sans-serif design.' },
-                { id: 'elegant', name: 'Elegant Serif', desc: 'Traditional print aesthetics with elegant borders.' },
-                { id: 'minimalist', name: 'Minimalist Edge', desc: 'Maximum whitespace, borderless table format.' },
-                { id: 'vibrant', name: 'Vibrant Coral', desc: 'Colorful, attractive modern design with vibrant headers.' }
+                { id: 'template1', name: 'Template 1', desc: 'Clean, contemporary, sans-serif design.' },
+                { id: 'template2', name: 'Template 2', desc: 'Optimized for Legal paper with dark blue highlights.' },
+                { id: 'template3', name: 'Template 3', desc: 'Traditional print aesthetics with elegant borders.' },
+                { id: 'template4', name: 'Template 4', desc: 'Maximum whitespace, borderless table format.' },
+                { id: 'template5', name: 'Template 5', desc: 'Colorful, attractive modern design with vibrant headers.' }
               ].map(tpl => (
                 <div 
                   key={tpl.id}
                   onClick={() => handleTemplateSelect(tpl.id)}
                   className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col gap-2 transition-all ${invoiceTemplate === tpl.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300'}`}
                 >
-                  <div className={`w-full h-32 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-2 overflow-hidden ${invoiceTemplate === tpl.id ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-[#151521]' : ''}`}>
-                    <LayoutTemplate size={48} className={invoiceTemplate === tpl.id ? 'text-blue-500' : 'text-slate-400'} />
+                  <div className={`w-full h-32 rounded bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center mb-2 overflow-hidden ${invoiceTemplate === tpl.id ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-[#151521]' : ''}`}>
+                    <LayoutTemplate size={32} className={`mb-2 ${invoiceTemplate === tpl.id ? 'text-blue-500' : 'text-slate-400'}`} />
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setPreviewTemplateId(tpl.id); setPreviewModalOpen(true); }}
+                      className="flex items-center gap-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-blue-100 text-slate-700 dark:text-slate-300 px-2 py-1 rounded"
+                    >
+                      <Eye size={12} /> Preview
+                    </button>
                   </div>
                   <h3 className="font-bold text-slate-800 dark:text-white text-center">{tpl.name}</h3>
                   <p className="text-xs text-slate-500 text-center">{tpl.desc}</p>
@@ -322,6 +349,28 @@ export default function BusinessSettings() {
           </div>
         </div>
       </div>
+      {previewModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-slate-200 w-full max-w-4xl h-[90vh] rounded-lg shadow-xl flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-4 bg-white border-b">
+              <h3 className="font-bold text-lg text-slate-800">Template Preview</h3>
+              <button onClick={() => setPreviewModalOpen(false)} className="p-1 hover:bg-slate-100 rounded">
+                <X size={20} className="text-slate-600" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex justify-center">
+               <div style={{transform: 'scale(0.8)', transformOrigin: 'top center'}} className="pointer-events-none">
+                 {previewTemplateId === 'template1' || previewTemplateId === 'modern' ? <Template1 data={dummyBillData} type="bill" /> : 
+                   previewTemplateId === 'template2' || previewTemplateId === 'legal' ? <Template2 data={dummyBillData} type="bill" /> : 
+                   previewTemplateId === 'template3' || previewTemplateId === 'elegant' ? <Template3 data={dummyBillData} type="bill" /> : 
+                   previewTemplateId === 'template4' || previewTemplateId === 'minimalist' ? <Template4 data={dummyBillData} type="bill" /> : 
+                   previewTemplateId === 'template5' || previewTemplateId === 'vibrant' ? <Template5 data={dummyBillData} type="bill" /> : 
+                   <ClassicTemplate data={dummyBillData} type="bill" />}
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
