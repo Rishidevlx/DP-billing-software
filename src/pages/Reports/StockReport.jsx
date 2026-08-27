@@ -5,7 +5,11 @@ import { booksApi, billsApi, returnsApi, stocksApi } from '../../services/api';
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
-  if (dStr.includes('-') && dStr.split('-')[0].length === 4) return dStr;
+  if (typeof dStr === 'string' && dStr.includes('T')) {
+    dStr = dStr.split('T')[0];
+  }
+  
+  if (dStr.includes('-') && dStr.split('-')[0].length === 4) return dStr.substring(0, 10);
   
   const parts = dStr.split(/[-/]/);
   if (parts.length === 3) {
@@ -13,7 +17,7 @@ const parseDate = (dStr) => {
       return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     }
   }
-  return dStr;
+  return dStr.substring(0, 10);
 };
 
 // Component for printing
@@ -111,7 +115,7 @@ export default function StockReport() {
       returnsApi.getAll(),
       stocksApi.getAll()
     ]).then(([b, bls, ret, stk]) => {
-      setAllBooks(b);
+      setAllBooks(b.map(book => ({ id: book.id, itemName: book.book_name, itemCode: book.alias_name, currentStock: book.stock })));
       setAllBills(bls);
       setAllReturns(ret);
       setAllStocks(stk);
@@ -137,8 +141,8 @@ export default function StockReport() {
       allTransactions.push({
         date: parseDate(entry.date),
         type: 'IN',
-        itemCode: book.alias_name,
-        itemName: book.book_name,
+        itemCode: book.itemCode,
+        itemName: book.itemName,
         qty: parseFloat(entry.qty) || 0
       });
     });
@@ -149,8 +153,8 @@ export default function StockReport() {
         allTransactions.push({
           date: parseDate(ret.date),
           type: 'IN',
-          itemCode: book.alias_name,
-          itemName: book.book_name,
+          itemCode: book.itemCode,
+          itemName: book.itemName,
           qty: parseFloat(item.qty) || 0
         });
       });
@@ -162,8 +166,8 @@ export default function StockReport() {
         allTransactions.push({
           date: parseDate(bill.date),
           type: 'OUT',
-          itemCode: book.alias_name,
-          itemName: book.book_name,
+          itemCode: book.itemCode,
+          itemName: book.itemName,
           qty: parseFloat(item.qty) || 0
         });
       });

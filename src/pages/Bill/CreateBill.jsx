@@ -101,10 +101,10 @@ export default function CreateBill() {
             
             setBillSettings(prev => ({
               ...prev,
-              discountPercent: billToEdit.discount_percent || '',
-              discountAmount: billToEdit.discount_amount || '',
-              freight: billToEdit.freight || '',
-              roundOff: billToEdit.round_off || ''
+              discountPercent: billToEdit.discount_percent ?? '',
+              discountAmount: billToEdit.discount_amount ?? '',
+              freight: billToEdit.freight ?? '',
+              roundOff: billToEdit.round_off ?? ''
             }));
           }
         } else {
@@ -715,7 +715,7 @@ export default function CreateBill() {
         const tDest = typeof selected === 'string' ? '' : selected.destination;
         setBillInfo(prev => ({ ...prev, transport: tName.toUpperCase(), destination: tDest.toUpperCase() }));
         setShowTransportDropdown(false);
-        document.getElementById('bundles').focus();
+        document.getElementById('destination').focus();
       } else {
         setShowTransportDropdown(false);
         document.getElementById('destination').focus();
@@ -1095,6 +1095,7 @@ export default function CreateBill() {
                   type="text" 
                   value={billInfo.destination}
                   onChange={(e) => setBillInfo({...billInfo, destination: e.target.value})}
+                  onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('bundles')?.focus(); }}}
                   className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
                 />
               </div>
@@ -1105,6 +1106,7 @@ export default function CreateBill() {
                   type="text" 
                   value={billInfo.bundles}
                   onChange={(e) => setBillInfo({...billInfo, bundles: e.target.value})}
+                  onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('discountPercent')?.focus(); }}}
                   className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs"
                 />
               </div>
@@ -1118,7 +1120,17 @@ export default function CreateBill() {
                   className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
                 />
               </div>
-              <div className="flex flex-col gap-1 md:col-span-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold text-slate-500 uppercase">LR Date</label>
+                <input 
+                  id="lrDate"
+                  type="text" 
+                  value={billInfo.lrDate}
+                  onChange={(e) => setBillInfo({...billInfo, lrDate: e.target.value})}
+                  className="w-full px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-xs uppercase"
+                />
+              </div>
+              <div className="flex flex-col gap-1 md:col-span-2">
                 <label className="text-[10px] font-semibold text-slate-500 uppercase">E Way Bill No</label>
                 <input 
                   id="eWayBillNo"

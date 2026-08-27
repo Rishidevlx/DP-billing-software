@@ -1,14 +1,23 @@
 import { moveToRecycleBin } from '../../utils/recycleBin';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Edit, Trash2, FileText } from 'lucide-react';
+import { Search, Edit, Trash2, FileText, Eye, X, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { receiptsApi, clientsApi, billsApi } from '../../services/api';
+import { useReactToPrint } from 'react-to-print';
+import PrintReceipt from './PrintReceipt';
 
 export default function AllReceipts() {
   const [receipts, setReceipts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const printRef = useRef();
   const navigate = useNavigate();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Receipt_${selectedReceipt?.voucherNo || 'Doc'}`,
+  });
 
   useEffect(() => {
     loadReceipts();
@@ -30,9 +39,9 @@ export default function AllReceipts() {
            customerName: customer ? customer.name : '',
            amount: r.amount,
            // Additional fields not strictly in current minimal schema, mapping safely
-           narrationSno: '', 
-           narrationPg: '',
-           narrationDate: ''
+           narrationSno: r.narration_sno || '', 
+           narrationPg: r.narration_pg || '',
+           narrationDate: r.narration_date || ''
          };
       });
       mapped.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -149,6 +158,13 @@ export default function AllReceipts() {
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-3">
                         <button 
+                          onClick={(e) => { e.stopPropagation(); setSelectedReceipt(receipt); }}
+                          className="text-emerald-500 hover:text-emerald-700 transition-colors"
+                          title="View Receipt"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
                           onClick={(e) => { e.stopPropagation(); handleEdit(receipt); }}
                           className="text-blue-500 hover:text-blue-700 transition-colors"
                           title="Edit Receipt"
@@ -177,6 +193,30 @@ export default function AllReceipts() {
           </table>
         </div>
       </div>
+      {/* View Receipt Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-slate-200 dark:bg-[#151521] w-full max-w-5xl max-h-[90vh] rounded-lg shadow-xl flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-[#1a1a2e]">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">View Receipt - {selectedReceipt.voucherNo}</h2>
+              <div className="flex gap-2">
+                <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer">
+                  <Printer size={16} /> Print
+                </button>
+                <button onClick={() => setSelectedReceipt(null)} className="bg-slate-300 hover:bg-slate-400 text-slate-800 px-4 py-1.5 rounded font-medium flex items-center gap-2 transition-colors border-none cursor-pointer">
+                  <X size={16} /> Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-300 dark:bg-slate-800 flex justify-center">
+              <div className="bg-white shadow-xl">
+                 <PrintReceipt ref={printRef} receiptData={selectedReceipt} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

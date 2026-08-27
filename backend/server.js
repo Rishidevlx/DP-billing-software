@@ -703,7 +703,8 @@ app.delete('/api/bills/:id', async (req, res) => {
       await pool.query('UPDATE books SET stock = stock + ? WHERE id = ?', [oldItem.qty, oldItem.book_id]);
     }
 
-    // 2. Delete bill (cascade will handle bill_items if set up, but we already have ON DELETE CASCADE)
+    // 2. Delete bill items and bill
+    await pool.query('DELETE FROM bill_items WHERE bill_id=?', [id]);
     await pool.query('DELETE FROM bills WHERE id=?', [id]);
     res.json({ message: 'Bill deleted successfully' });
   } catch (err) {
@@ -795,7 +796,58 @@ app.post('/api/receipts', async (req, res) => {
       'INSERT INTO receipts (receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations ? JSON.stringify(allocations) : null]
     );
+
+    // Apply allocations
+    if (allocations) {
+      for (const [billId, allocatedAmount] of Object.entries(allocations)) {
+        if (allocatedAmount > 0) {
+          await pool.query('UPDATE bills SET amount_paid = amount_paid + ? WHERE id=?', [allocatedAmount, billId]);
+        }
+      }
+    }
+
     res.status(201).json({ id: result.insertId, receipt_no });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/receipts/:id', async (req, res) => {
+  const { id } = req.params;
+  const { receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations } = req.body;
+  try {
+    // 1. Fetch and reverse old allocations
+    const [oldReceipts] = await pool.query('SELECT allocations FROM receipts WHERE id=?', [id]);
+    if (oldReceipts.length > 0 && oldReceipts[0].allocations) {
+      let oldAllocations = {};
+      try {
+        oldAllocations = typeof oldReceipts[0].allocations === 'string' 
+          ? JSON.parse(oldReceipts[0].allocations) 
+          : oldReceipts[0].allocations;
+      } catch(e) {}
+      for (const [billId, allocatedAmount] of Object.entries(oldAllocations)) {
+         if (allocatedAmount > 0) {
+            await pool.query('UPDATE bills SET amount_paid = amount_paid - ? WHERE id=?', [allocatedAmount, billId]);
+         }
+      }
+    }
+
+    // 2. Update receipt
+    await pool.query(
+      'UPDATE receipts SET receipt_no=?, date=?, customer_id=?, amount=?, payment_mode=?, reference_no=?, remarks=?, created_by=?, shortage=?, narration_sno=?, narration_pg=?, narration_date=?, allocations=? WHERE id=?',
+      [receipt_no, date, customer_id, amount, payment_mode, reference_no, remarks, created_by, shortage, narration_sno, narration_pg, narration_date, allocations ? JSON.stringify(allocations) : null, id]
+    );
+
+    // 3. Apply new allocations
+    if (allocations) {
+      for (const [billId, allocatedAmount] of Object.entries(allocations)) {
+        if (allocatedAmount > 0) {
+          await pool.query('UPDATE bills SET amount_paid = amount_paid + ? WHERE id=?', [allocatedAmount, billId]);
+        }
+      }
+    }
+
+    res.json({ message: 'Receipt updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -804,6 +856,23 @@ app.post('/api/receipts', async (req, res) => {
 app.delete('/api/receipts/:id', async (req, res) => {
   const { id } = req.params;
   try {
+    // 1. Fetch and reverse old allocations
+    const [oldReceipts] = await pool.query('SELECT allocations FROM receipts WHERE id=?', [id]);
+    if (oldReceipts.length > 0 && oldReceipts[0].allocations) {
+      let oldAllocations = {};
+      try {
+        oldAllocations = typeof oldReceipts[0].allocations === 'string' 
+          ? JSON.parse(oldReceipts[0].allocations) 
+          : oldReceipts[0].allocations;
+      } catch(e) {}
+      for (const [billId, allocatedAmount] of Object.entries(oldAllocations)) {
+         if (allocatedAmount > 0) {
+            await pool.query('UPDATE bills SET amount_paid = amount_paid - ? WHERE id=?', [allocatedAmount, billId]);
+         }
+      }
+    }
+
+    // 2. Delete receipt
     await pool.query('DELETE FROM receipts WHERE id=?', [id]);
     res.json({ success: true });
   } catch (err) {

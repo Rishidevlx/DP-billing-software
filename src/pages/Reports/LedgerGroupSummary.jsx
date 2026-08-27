@@ -343,13 +343,13 @@ export default function LedgerGroupSummary() {
           </div>
 
           <div className="flex-1 max-w-sm relative">
-            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Select Ledger</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{selectedGroup === 'Bank Accounts' ? 'Select Bank' : 'Select Ledger'}</label>
             <select
               value={selectedLedger}
               onChange={(e) => setSelectedLedger(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-white text-sm focus:outline-none focus:border-blue-500 uppercase cursor-pointer"
             >
-              <option value="ALL">-- ALL LEDGERS --</option>
+              <option value="ALL">{selectedGroup === 'Bank Accounts' ? '-- ALL BANKS --' : '-- ALL LEDGERS --'}</option>
               {availableLedgers.map((ldr, idx) => (
                 <option key={idx} value={ldr}>{ldr}</option>
               ))}

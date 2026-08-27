@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Printer, FileText } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import PrintLedger from './PrintLedger';
-import { clientsApi, billsApi, receiptsApi, returnsApi } from '../../services/api';
+import { clientsApi, billsApi, receiptsApi, returnsApi, banksApi } from '../../services/api';
 
 export default function LedgerReport() {
   const [clients, setClients] = useState([]);
@@ -36,8 +36,9 @@ export default function LedgerReport() {
       clientsApi.getAll(),
       billsApi.getAll(),
       receiptsApi.getAll(),
-      returnsApi.getAll()
-    ]).then(([loadedClients, loadedBills, loadedReceipts, loadedReturns]) => {
+      returnsApi.getAll(),
+      banksApi.getAll()
+    ]).then(([loadedClients, loadedBills, loadedReceipts, loadedReturns, loadedBanks]) => {
       // Map API fields if needed for Ledger
       const mappedClients = loadedClients.map(c => ({...c, ledgerName: c.name}));
       
@@ -49,7 +50,8 @@ export default function LedgerReport() {
       const uniqueCities = [...new Set(mappedClients.map(c => c.city).filter(Boolean))];
       const uniquePartyTypes = [...new Set(mappedClients.map(c => c.partyType).filter(Boolean))];
       const uniqueGroups = [...new Set(mappedClients.map(c => c.group).filter(Boolean))];
-      const uniqueAcNames = [...new Set(loadedReceipts.map(r => r.payment_mode || 'CASH').filter(Boolean))];
+      const allBanks = loadedBanks.map(b => typeof b === 'string' ? b : b.name);
+      const uniqueAcNames = [...new Set([...loadedReceipts.map(r => r.payment_mode || 'CASH').filter(Boolean), 'CASH', ...allBanks])].sort();
       
       if (!uniqueGroups.includes('Customer')) uniqueGroups.push('Customer');
 
@@ -179,20 +181,24 @@ export default function LedgerReport() {
   } else if (filters.acName && filters.acName !== 'ALL') {
     // A/C Name Report Mode
     let allTransactions = [];
-    let matchingReceipts = receipts.filter(r => (r.accountName || 'CASH') === filters.acName);
+    let matchingReceipts = receipts.filter(r => (r.payment_mode || 'CASH') === filters.acName);
 
     matchingReceipts.forEach(r => {
        let nar = '';
-       if(r.narrationSno || r.narrationPg || r.narrationDate) {
-           nar = `sno ${r.narrationSno || ''} pg ${r.narrationPg || ''} dated ${r.narrationDate || ''}`.trim();
+       if(r.narration_sno || r.narration_pg || r.narration_date) {
+           nar = `sno ${r.narration_sno || ''} pg ${r.narration_pg || ''} dated ${r.narration_date || ''}`.trim();
        }
+       
+       const client = clients.find(c => c.id === r.customer_id);
+       const custName = client ? client.ledgerName : 'UNKNOWN CUSTOMER';
+
        allTransactions.push({
            dateObj: parseDateString(r.date),
            dateStr: parseDateString(r.date) ? parseDateString(r.date).toLocaleDateString('en-GB') : r.date,
-           particulars: r.customerName || 'UNKNOWN CUSTOMER', // Show customer name here
-           acName: r.accountName || 'CASH',
+           particulars: custName, // Show customer name here
+           acName: r.payment_mode || 'CASH',
            vchType: 'Receipt',
-           vchNo: r.voucherNo,
+           vchNo: r.receipt_no,
            debit: 0,
            credit: parseFloat(r.amount) || 0,
            narration: nar
@@ -256,6 +262,70 @@ export default function LedgerReport() {
     (c.ledgerName || '').toLowerCase().includes((filters.ledgerName || '').toLowerCase()) ||
     (c.mobileNo || '').includes(filters.ledgerName || '')
   );
+
+  // Compute summary for ALL customers if no ledger is selected
+  let allCustomersSummary = [];
+  if (!filters.ledgerName && (!filters.acName || filters.acName === 'ALL')) {
+    let fromDateObj = filters.fromDate ? new Date(filters.fromDate) : null;
+    if(fromDateObj) fromDateObj.setHours(0,0,0,0);
+    let toDateObj = filters.toDate ? new Date(filters.toDate) : null;
+    if(toDateObj) toDateObj.setHours(23,59,59,999);
+
+    allCustomersSummary = filteredClients.map(c => {
+      let opening = 0;
+      let debit = 0;
+      let credit = 0;
+
+      // Sales
+      const clientBills = bills.filter(b => b.customer_id === c.id);
+      clientBills.forEach(b => {
+        const dObj = parseDateString(b.date);
+        const amt = parseFloat(b.net_amount) || 0;
+        if (fromDateObj && dObj < fromDateObj) {
+          opening += amt;
+        } else if ((!fromDateObj || dObj >= fromDateObj) && (!toDateObj || dObj <= toDateObj)) {
+          debit += amt;
+        }
+      });
+
+      // Receipts
+      const clientReceipts = receipts.filter(r => r.customer_id === c.id);
+      clientReceipts.forEach(r => {
+        const dObj = parseDateString(r.date);
+        const amt = parseFloat(r.amount) || 0;
+        if (fromDateObj && dObj < fromDateObj) {
+          opening -= amt;
+        } else if ((!fromDateObj || dObj >= fromDateObj) && (!toDateObj || dObj <= toDateObj)) {
+          credit += amt;
+        }
+      });
+
+      // Returns
+      const clientReturns = returns.filter(rt => rt.customer_id === c.id);
+      clientReturns.forEach(rt => {
+        const dObj = parseDateString(rt.date);
+        const amt = parseFloat(rt.net_amount) || 0;
+        if (fromDateObj && dObj < fromDateObj) {
+          opening -= amt;
+        } else if ((!fromDateObj || dObj >= fromDateObj) && (!toDateObj || dObj <= toDateObj)) {
+          credit += amt;
+        }
+      });
+
+      const closing = opening + debit - credit;
+
+      return {
+        ...c,
+        opening,
+        debit,
+        credit,
+        closing
+      };
+    }).filter(c => c.opening !== 0 || c.debit !== 0 || c.credit !== 0 || c.closing !== 0);
+    
+    // sort alphabetically
+    allCustomersSummary.sort((a,b) => (a.ledgerName||'').localeCompare(b.ledgerName||''));
+  }
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -390,7 +460,7 @@ export default function LedgerReport() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">A/C Name</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Select Banks</label>
               <select 
                 value={filters.acName}
                 onChange={(e) => {
@@ -496,10 +566,55 @@ export default function LedgerReport() {
             </table>
             </div>
         ) : (
-            <div className="p-12 flex flex-col items-center justify-center text-center">
-                <Search size={48} className="text-slate-300 dark:text-slate-600 mb-4" />
-                <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">Select a Ledger or A/C Name</h3>
-                <p className="text-slate-500 text-sm mt-1 max-w-sm">Please search and select a Ledger Name or A/C Name from the filters above to view the detailed voucher statement.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-[#1a1a2e] border-b border-slate-200 dark:border-slate-700">
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Customer Name</th>
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">Group</th>
+                    <th className="p-3 text-sm font-semibold text-slate-600 dark:text-slate-400">City</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Opening</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Debit</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Credit</th>
+                    <th className="p-3 text-right text-sm font-semibold text-slate-600 dark:text-slate-400">Closing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allCustomersSummary.length > 0 ? (
+                    allCustomersSummary.map((c, index) => (
+                      <tr 
+                        key={index} 
+                        className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-[#1E1E2D]/50 transition-colors cursor-pointer"
+                        onClick={() => handleFilterChange('ledgerName', c.ledgerName)}
+                      >
+                        <td className="p-3 text-sm font-bold text-blue-600 dark:text-blue-400 uppercase">{c.ledgerName}</td>
+                        <td className="p-3 text-sm text-slate-600 dark:text-slate-400">{c.group || '-'}</td>
+                        <td className="p-3 text-sm text-slate-600 dark:text-slate-400">{c.city || '-'}</td>
+                        <td className="p-3 text-sm text-right font-medium text-slate-700 dark:text-slate-300">
+                          {c.opening !== 0 ? `${Math.abs(c.opening).toFixed(2)} ${c.opening > 0 ? 'Dr' : 'Cr'}` : '0.00'}
+                        </td>
+                        <td className="p-3 text-sm text-right font-medium text-slate-700 dark:text-slate-300">
+                          {c.debit !== 0 ? c.debit.toFixed(2) : '0.00'}
+                        </td>
+                        <td className="p-3 text-sm text-right font-medium text-slate-700 dark:text-slate-300">
+                          {c.credit !== 0 ? c.credit.toFixed(2) : '0.00'}
+                        </td>
+                        <td className="p-3 text-sm text-right font-bold text-slate-900 dark:text-white">
+                          {c.closing !== 0 ? `${Math.abs(c.closing).toFixed(2)} ${c.closing > 0 ? 'Dr' : 'Cr'}` : '0.00'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="p-12 text-center text-slate-500 dark:text-slate-400">
+                        <Search size={48} className="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">No Customers Found</h3>
+                        <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">No ledger balances found for the selected filters in this period.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
         )}
       </div>

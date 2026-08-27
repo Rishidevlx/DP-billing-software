@@ -8,17 +8,17 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
   if (!bill) return null;
 
   const { transport, destination, bundles, isLocalTransport } = labelData;
-  const clientName = bill.customer?.printName || bill.customer?.ledgerName || bill.customer?.name || '';
   
   // Format the TO address based on client details directly from customer object
-  const toSchool = bill.customer?.school || '';
+  // 'school' field acts as the Print Name
+  const printName = bill.customer?.school || '';
   const toAddress1 = bill.customer?.address1 || '';
   const toTown = bill.customer?.town || '';
   const toDistrict = bill.customer?.district || '';
   const toMobile = bill.customer?.mobileNo || bill.customer?.mobile || '';
 
   return (
-    <div className="hidden print:block">
+    <div className="flex justify-center bg-transparent print-wrapper">
       <div ref={ref} className="bg-white text-black" style={{ fontFamily: 'Arial, sans-serif', width: '210mm', height: '148mm', boxSizing: 'border-box', position: 'relative' }}>
         <style type="text/css" media="print">
           {`
@@ -29,81 +29,97 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
         </style>
 
         {/* Content wrapper with padding to simulate margins, keeping strictly within 148mm height */}
-        <div className="p-8 h-full flex flex-col justify-between">
+        <div className="p-2 h-full flex flex-col justify-between">
           
-          {/* Top Section */}
-          <div className="flex justify-between items-start">
-            
-            {/* Left Side: Transport Details */}
-            <div className="w-[45%] space-y-5">
-              <div className="text-xl font-bold tracking-wide text-gray-800 border-b border-gray-300 pb-2 mb-4">
-                <span className="mr-3 text-blue-900">BILL NO :</span> {bill.billInfo?.billNo}
+          <div className="border-[3px] border-[#1e3a8a] rounded-2xl h-full flex flex-col p-3 bg-white relative overflow-hidden">
+            {/* Watermark Logo */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none">
+              <img src="/DP-logo.png" alt="" className="w-[350px]" />
+            </div>
+
+            {/* Top Section */}
+            <div className="flex justify-between items-stretch flex-1 gap-6 mb-4 relative z-10">
+              
+              {/* Left Side: Transport Details */}
+              <div className="w-[48%] space-y-5 flex flex-col">
+                <div className="bg-[#1e3a8a] text-white px-5 py-3 rounded-xl shadow-sm w-fit mb-2">
+                  <span className="font-semibold text-blue-200 text-xl mr-3">BILL NO :</span> 
+                  <span className="text-4xl font-black">{bill.billInfo?.billNo}</span>
+                </div>
+
+                <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-5 flex-1 flex flex-col justify-center space-y-5 shadow-sm">
+                  <div className="flex items-end gap-3 border-b border-slate-200 pb-2">
+                    <span className="w-36 text-slate-500 font-bold text-lg uppercase tracking-wider">Transport</span>
+                    <span className="handwritten-text flex-1 text-[26px] font-bold text-[#1e3a8a]">{transport}</span>
+                  </div>
+                  <div className="flex items-end gap-3 border-b border-slate-200 pb-2">
+                    <span className="w-36 text-slate-500 font-bold text-lg uppercase tracking-wider">Destination</span>
+                    <span className="handwritten-text flex-1 text-[26px] font-bold text-[#1e3a8a]">{destination}</span>
+                  </div>
+                  <div className="flex items-end gap-3">
+                    <span className="w-36 text-slate-500 font-bold text-lg uppercase tracking-wider">Bundles</span>
+                    <span className="handwritten-text flex-1 text-[32px] font-black text-[#1e3a8a] text-center">{bundles}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-end gap-3 text-gray-800 font-semibold text-lg">
-                <span className="w-24 text-blue-900">Transport</span>
-                <span className="handwritten-text flex-1">{transport}</span>
-              </div>
-              <div className="flex items-end gap-3 text-gray-800 font-semibold text-lg">
-                <span className="w-24 text-blue-900">Des</span>
-                <span className="handwritten-text flex-1">{destination}</span>
-              </div>
-              <div className="flex items-end gap-3 text-gray-800 font-semibold text-lg">
-                <span className="w-24 text-blue-900">NO. of B</span>
-                <span className="handwritten-text flex-1">{bundles}</span>
+
+              {/* Right Side: TO Address */}
+              <div className="w-[52%] bg-blue-50/50 border border-blue-200 rounded-xl p-5 pl-6 relative shadow-sm flex flex-col">
+                <div className="absolute top-0 right-0 bg-[#1e3a8a] text-white px-5 py-1.5 rounded-bl-xl rounded-tr-xl font-bold tracking-widest uppercase text-sm shadow-sm">
+                  Ship To
+                </div>
+                <div className="space-y-1.5 text-gray-800 font-bold text-xl leading-snug pt-3 flex-1 flex flex-col">
+                  {printName && (
+                    <p className="text-[28px] font-black text-[#1e3a8a] mb-2 uppercase tracking-wider leading-tight">
+                      {isLocalTransport ? (labelData.tamilSchool || printName) : printName}
+                    </p>
+                  )}
+                  {toAddress1 && <p className="text-[20px] text-gray-700 mt-1">{isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1}</p>}
+                  {toTown && <p className="text-[20px] text-gray-700">{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
+                  {toDistrict && <p className="text-[20px] text-gray-700">{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
+                  
+                  <div className="mt-auto pt-3 flex gap-2 text-[22px] font-black border-t-2 border-blue-200 border-dashed">
+                    <span className="text-[#1e3a8a]">{isLocalTransport ? 'செல் :' : 'Mobile :'}</span> 
+                    <span>{toMobile}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Right Side: TO Address */}
-            <div className="w-[50%] pl-6 border-l-2 border-gray-200">
-              <div className="space-y-1 uppercase tracking-wider text-gray-800 font-bold text-base leading-snug">
-                <p className="text-xl font-black text-blue-900 mb-2 border-b border-gray-300 inline-block pb-1">
-                  TO :
-                </p>
-                <p className="text-lg">{isLocalTransport ? (labelData.tamilName || clientName) : clientName}</p>
-                {toSchool && <p>{isLocalTransport ? (labelData.tamilSchool || toSchool) : toSchool}</p>}
-                {toAddress1 && <p>{isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1}</p>}
-                {toTown && <p>{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
-                {toDistrict && <p>{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
-                
-                <p className="pt-2 flex gap-2 text-lg">
-                  <span className="text-blue-900">{isLocalTransport ? 'செல் :' : 'Mobile No :'}</span> 
-                  <span>{toMobile}</span>
-                </p>
+            {/* Bottom Section: FROM Address */}
+            <div className="bg-slate-50 rounded-xl p-2 px-4 border border-slate-200 shadow-sm flex items-center justify-between relative z-10 flex-shrink-0">
+              <div className="w-[28%] flex justify-center border-r-2 border-slate-200 pr-4 items-center">
+                <img src="/DP-logo.png" alt="Dolphin Publications" className="w-full max-w-[180px] object-contain drop-shadow-md" />
               </div>
-            </div>
-          </div>
-
-          {/* Bottom Section: FROM Address */}
-          <div className="mt-auto pt-4 border-t-2 border-gray-800">
-            <div className="space-y-0.5 uppercase tracking-wider text-gray-800 font-bold text-sm leading-tight flex justify-between items-end">
-              <div>
-                <p className="text-base font-black text-blue-900 mb-1">
-                  FROM :
-                </p>
+              
+              <div className="w-[72%] flex flex-col items-center text-center pl-4 justify-center py-1">
                 {isLocalTransport ? (
                   <>
-                    <p className="text-xl font-black text-blue-950 mb-1">டால்பின் பப்ளிகேஷன்ஸ்</p>
-                    <p>239, கீழப்பட்டி தெரு, ஸ்ரீவில்லிபுத்தூர் - 626 125.</p>
-                    <p>விருதுநகர் மாவட்டம்</p>
+                    <h2 className="text-[26px] font-black text-[#1e3a8a] mb-1 tracking-wider uppercase">
+                      டால்பின் பப்ளிகேஷன்ஸ்
+                    </h2>
+                    <p className="font-bold text-gray-800 text-[14px] leading-tight">239, கீழப்பட்டி தெரு, ஸ்ரீவில்லிபுத்தூர் - 626 125. விருதுநகர் மாவட்டம்</p>
+                    <p className="font-bold text-gray-800 text-[14px] leading-tight">தமிழ்நாடு (Code : 33) &nbsp;|&nbsp; GSTIN : 33CAEPK4827P1ZC</p>
+                    <div className="w-full h-px bg-slate-300 my-1.5"></div>
+                    <p className="font-bold text-gray-900 text-[14.5px]">அலைபேசி : 98653-06197, 89256-77710</p>
+                    <p className="font-bold text-[#1e3a8a] text-[13.5px] mt-0.5">E-Mail : dolphin.pub2005@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; Website : www.kalvidolphin.com</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-xl font-black text-blue-950 mb-1">DOLPHIN PUBLICATIONS</p>
-                    <p>239, Keelapatti Street, Srivilliputtur - 626 125.</p>
-                    <p>Virudhunagar District</p>
+                    <h2 className="text-[26px] font-black text-[#1e3a8a] mb-1 tracking-wider uppercase">
+                      DOLPHIN PUBLICATIONS
+                    </h2>
+                    <p className="font-bold text-gray-800 text-[14px] leading-tight">239, Keelapatti Street, Srivilliputtur - 626 125. Virudhunagar District</p>
+                    <p className="font-bold text-gray-800 text-[14px] leading-tight">Tamil Nadu (Code : 33) &nbsp;|&nbsp; GSTIN : 33CAEPK4827P1ZC</p>
+                    <div className="w-full h-px bg-slate-300 my-1.5"></div>
+                    <p className="font-bold text-gray-900 text-[14.5px]">Mobile : 98653-06197, 89256-77710</p>
+                    <p className="font-bold text-[#1e3a8a] text-[13.5px] mt-0.5">E-Mail : dolphin.pub2005@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; Website : www.kalvidolphin.com</p>
                   </>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-blue-900 mb-1 font-black">
-                  {isLocalTransport ? 'அலைபேசி :' : 'Mobile :'}
-                </p>
-                <p className="text-base">98653-06197</p>
-                <p className="text-base">89256-77710</p>
-              </div>
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
     </div>
@@ -383,114 +399,113 @@ export default function BillReport() {
         </div>
       </div>
 
-      {/* Hidden Print Content */}
-      <div className="hidden">
-        <PrintLabel ref={printRef} bill={selectedBill} labelData={labelData} />
-      </div>
-
-      {/* Label Details Modal */}
+      {/* Label Details and Preview Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1E1E2D] rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#1E1E2D] rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#151521]">
               <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <Printer size={18} className="text-blue-500" />
-                Shipping Label Details
+                Shipping Label Preview
               </h3>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors bg-transparent border-none cursor-pointer p-1"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); handlePrintAction(); }}
+                  className="px-4 py-1.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors flex items-center gap-2 cursor-pointer border-none"
+                >
+                  <Printer size={16} />
+                  Print Label
+                </button>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-1.5 text-sm font-semibold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-md transition-colors border-none cursor-pointer flex items-center gap-2"
+                >
+                  <X size={16} /> Close
+                </button>
+              </div>
             </div>
 
-            <div className="p-6">
-              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-lg text-sm border border-blue-100 dark:border-blue-800/50">
-                Enter the transport details to be printed on the shipping label for Bill No: <strong>{selectedBill?.billInfo?.billNo}</strong>
+            <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+              {/* Form Section */}
+              <div className="w-full md:w-1/3 p-6 overflow-y-auto border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-lg text-sm border border-blue-100 dark:border-blue-800/50">
+                  Enter the transport details to be printed on the shipping label for Bill No: <strong>{selectedBill?.billInfo?.billNo}</strong>
+                </div>
+
+                <form onSubmit={(e) => { e.preventDefault(); handlePrintAction(); }} className="space-y-4 mt-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
+                      Transport
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      placeholder="e.g., Local Transport"
+                      className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 uppercase"
+                      value={labelData.transport}
+                      onChange={e => setLabelData({...labelData, transport: e.target.value.toUpperCase()})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
+                      Destination (Des)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Salem"
+                      className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 uppercase"
+                      value={labelData.destination}
+                      onChange={e => setLabelData({...labelData, destination: e.target.value.toUpperCase()})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
+                      No. of Bundles
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      placeholder="e.g., 5"
+                      className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      value={labelData.bundles}
+                      onChange={e => setLabelData({...labelData, bundles: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <input
+                      type="checkbox"
+                      id="localTransport"
+                      checked={labelData.isLocalTransport}
+                      onChange={handleLocalTransportToggle}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <label htmlFor="localTransport" className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide cursor-pointer">
+                      Local Transport (Tamil Labels)
+                    </label>
+                    {labelData.isLocalTransport && !labelData.tamilName && (
+                      <span className="text-xs text-slate-500 animate-pulse ml-2">Translating...</span>
+                    )}
+                  </div>
+                  <button type="submit" className="hidden"></button>
+                </form>
               </div>
 
-              <form onSubmit={handlePrintSubmit} className="space-y-4 mt-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
-                    Transport
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    placeholder="e.g., Local Transport"
-                    className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 uppercase"
-                    value={labelData.transport}
-                    onChange={e => setLabelData({...labelData, transport: e.target.value.toUpperCase()})}
-                  />
+              {/* Preview Section */}
+              <div className="w-full md:w-2/3 p-6 overflow-y-auto bg-slate-300 dark:bg-slate-800 flex justify-center items-start">
+                <div className="shadow-2xl border border-slate-200" style={{ transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+                  <PrintLabel ref={printRef} bill={selectedBill} labelData={labelData} />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
-                    Destination (Des)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Salem"
-                    className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 uppercase"
-                    value={labelData.destination}
-                    onChange={e => setLabelData({...labelData, destination: e.target.value.toUpperCase()})}
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
-                    No. of Bundles
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="e.g., 5"
-                    className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                    value={labelData.bundles}
-                    onChange={e => setLabelData({...labelData, bundles: e.target.value})}
-                  />
-                </div>
+              </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="localTransport"
-                    checked={labelData.isLocalTransport}
-                    onChange={handleLocalTransportToggle}
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
-                  <label htmlFor="localTransport" className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide cursor-pointer">
-                    Local Transport (Tamil Labels)
-                  </label>
-                  {labelData.isLocalTransport && !labelData.tamilName && (
-                    <span className="text-xs text-slate-500 animate-pulse ml-2">Translating...</span>
-                  )}
-                </div>
-
-                <div className="pt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-5 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors bg-transparent border border-slate-300 dark:border-slate-700 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors flex items-center gap-2 cursor-pointer border-none"
-                  >
-                    <Printer size={16} />
-                    Confirm & Print
-                  </button>
-                </div>
-              </form>
             </div>
-            
           </div>
         </div>
       )}

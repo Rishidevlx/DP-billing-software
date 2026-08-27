@@ -103,11 +103,11 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               <span className="text-blue-800">BILL TO :</span>
             </div>
             <div className="mt-2 text-slate-900 uppercase">
-              {customer?.party_type && <p>{customer.party_type}</p>}
-              <p>{customer?.school || "THIYAGARAJA HR SEC SCHOOL"}</p>
-              <p>{customer?.address1 || "N.G.G. O. COLONY"}</p>
-              <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>
-              <p>{customer?.district || "Virudhunagar District"}</p>
+              {/* removed party_type */}
+              <p>{customer?.school || ""}</p>
+              <p>{customer?.address1 || ""}</p>
+              <p>{customer?.address2 || ""}</p>
+              <p>{customer?.district || ""}</p>
               <p>Tamil Nadu (Code : 33)</p>
               {customer?.mobile && <p>Mob. No : {customer.mobile}</p>}
             </div>
@@ -118,16 +118,16 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
             <div className="flex border-b border-slate-800 flex-1">
               <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">
                 <span className="w-16">Bill No :</span>
-                <span className="text-blue-800 text-base">{billInfo?.billNo || "8199"}</span>
+                <span className="text-blue-800 text-base">{billInfo?.billNo || ""}</span>
               </div>
               <div className="w-1/2 p-1 flex items-center">
-                <span>Date : {billInfo?.date || "31/07/2026"}</span>
+                <span>Date : {billInfo?.date || ""}</span>
               </div>
             </div>
 
             <div className="flex border-b border-slate-800 flex-1">
               <div className="w-1/2 p-1 border-r border-slate-800 flex items-center">TRANSPORT</div>
-              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.transport || "DIRECT SALES"}</div>
+              <div className="w-1/2 p-1 flex items-center font-normal uppercase">{billInfo?.transport || ""}</div>
             </div>
 
             <div className="flex border-b border-slate-800 flex-1">
@@ -140,7 +140,7 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
                 NO. OF BUNDLES <span className="ml-2 font-normal">{billInfo?.bundles || "0"}</span>
               </div>
               <div className="w-1/2 p-1 flex items-center">
-                LR Date : <span className="ml-1 font-normal">{billInfo?.lrDate || "31/07/2026"}</span>
+                LR Date : <span className="ml-1 font-normal">{billInfo?.lrDate || billInfo?.date || ""}</span>
               </div>
             </div>
 
@@ -285,10 +285,10 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
               {customer?.mobile && <span className="text-slate-800">Mob. No : {customer.mobile}</span>}
             </div>
             <div className="text-slate-900 uppercase leading-snug">
-              <p>{customer?.school || "THIYAGARAJA HR SEC SCHOOL"}</p>
-              <p>{customer?.address1 || "N.G.G. O. COLONY"}</p>
-              <p>{customer?.address2 || "Srivilliputtur Taluk - 626125"}</p>
-              <p>{customer?.district || "Virudhunagar District"}</p>
+              <p>{customer?.school || ""}</p>
+              <p>{customer?.address1 || ""}</p>
+              <p>{customer?.address2 || ""}</p>
+              <p>{customer?.district || ""}</p>
               <p>Tamil Nadu (Code : 33)</p>
             </div>
           </div>
@@ -299,12 +299,12 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
           <div className="flex">
             <span className="w-28">Bill No</span>
             <span className="mr-2">:</span>
-            <span className="text-slate-900">{billInfo?.billNo || "8199"}</span>
+            <span className="text-slate-900">{billInfo?.billNo || ""}</span>
           </div>
           <div className="flex">
             <span className="w-28">Transport</span>
             <span className="mr-2">:</span>
-            <span className="text-slate-900 uppercase">{billInfo?.transport || "DIRECT SALES"}</span>
+            <span className="text-slate-900 uppercase">{billInfo?.transport || ""}</span>
           </div>
           <div className="flex">
             <span className="w-28">Destination</span>
@@ -324,7 +324,7 @@ const ClassicTemplate = forwardRef(({ billData }, ref) => {
           <div className="flex">
             <span className="w-28">LR Date</span>
             <span className="mr-2">:</span>
-            <span className="text-slate-900">{billInfo?.lrDate || ""}</span>
+            <span className="text-slate-900">{billInfo?.lrDate || billInfo?.date || ""}</span>
           </div>
           <div className="flex mt-1">
             <span className="w-28">E-Way Bill No</span>

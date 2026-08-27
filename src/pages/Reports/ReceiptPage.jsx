@@ -4,7 +4,7 @@ import { Save, RefreshCw, Search, X, Check, Printer } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useReactToPrint } from 'react-to-print';
 import PrintReceipt from './PrintReceipt';
-import { receiptsApi, clientsApi, billsApi } from '../../services/api';
+import { receiptsApi, clientsApi, billsApi, banksApi } from '../../services/api';
 
 export default function ReceiptPage() {
   const { id } = useParams();
@@ -15,6 +15,7 @@ export default function ReceiptPage() {
   const [banks, setBanks] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [originalAllocations, setOriginalAllocations] = useState({});
+  const [allReceipts, setAllReceipts] = useState([]);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -62,10 +63,11 @@ export default function ReceiptPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [clientsData, billsData, receiptsData] = await Promise.all([
+        const [clientsData, billsData, receiptsData, banksData] = await Promise.all([
           clientsApi.getAll(),
           billsApi.getAll(),
-          receiptsApi.getAll()
+          receiptsApi.getAll(),
+          banksApi.getAll()
         ]);
 
         const mappedClients = clientsData.map(c => ({
@@ -87,9 +89,8 @@ export default function ReceiptPage() {
           };
         });
         setBills(mappedBills);
-
-        const savedBanks = JSON.parse(localStorage.getItem('banks') || '[]');
-        setBanks(savedBanks);
+        setBanks(banksData);
+        setAllReceipts(receiptsData);
 
         if (id) {
           const existingReceipt = receiptsData.find(r => r.id.toString() === id);
@@ -103,9 +104,9 @@ export default function ReceiptPage() {
               billNo: '',
               amount: existingReceipt.amount || '',
               shortage: existingReceipt.shortage || '',
-              narrationSno: '',
-              narrationPg: '',
-              narrationDate: ''
+              narrationSno: existingReceipt.narration_sno || '',
+              narrationPg: existingReceipt.narration_pg || '',
+              narrationDate: existingReceipt.narration_date || ''
             });
             
             if (existingReceipt.customer_id) {
@@ -130,7 +131,11 @@ export default function ReceiptPage() {
             navigate('/reports/all-receipts');
           }
         } else {
-          const nextVoucher = (receiptsData.length + 1).toString().padStart(3, '0');
+          const maxVoucher = receiptsData.reduce((max, r) => {
+            const num = parseInt(r.receipt_no, 10);
+            return (!isNaN(num) && num > max) ? num : max;
+          }, 0);
+          const nextVoucher = (maxVoucher + 1).toString().padStart(3, '0');
           setFormData(prev => ({ ...prev, voucherNo: nextVoucher }));
         }
       } catch (err) {
@@ -199,49 +204,11 @@ export default function ReceiptPage() {
       if (showClientDropdown && filteredClients.length > 0) {
         selectCustomer(filteredClients[0]);
       } else {
-        billInputRef.current?.focus();
-      }
-    }
-  };
-
-  // Bill Autocomplete logic
-  const handleBillChange = (e) => {
-    const value = e.target.value;
-    setFormData(prev => ({ ...prev, billNo: value }));
-    
-    if (value.trim()) {
-      let filtered = bills;
-      if (formData.customerName) {
-         filtered = bills.filter(b => b.customer?.name === formData.customerName);
-      }
-      filtered = filtered.filter(b => b.billInfo?.billNo?.toLowerCase().includes(value.toLowerCase()));
-      setFilteredBillsList(filtered);
-      setShowBillDropdown(true);
-    } else {
-      setShowBillDropdown(false);
-    }
-  };
-
-  const selectBill = (bill) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      billNo: bill.billInfo?.billNo,
-      ...( !prev.customerName && bill.customer?.name ? { customerName: bill.customer.name } : {} )
-    }));
-    setShowBillDropdown(false);
-    setTimeout(() => amountInputRef.current?.focus(), 100);
-  };
-
-  const handleBillKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (showBillDropdown && filteredBillsList.length > 0) {
-        selectBill(filteredBillsList[0]);
-      } else {
         amountInputRef.current?.focus();
       }
     }
   };
+
 
   // When amount is entered and user presses Enter
   const handleAmountKeyDown = (e) => {
@@ -280,7 +247,7 @@ export default function ReceiptPage() {
 
       setUnpaidBills(unpaid);
       setCurrentAmountToAllocate(amount);
-      setAllocatedBills({});
+      // Removed setAllocatedBills({}) so it retains existing allocations when editing
       setIsModalOpen(true);
     }
   };
@@ -377,7 +344,7 @@ export default function ReceiptPage() {
       reference_no: '',
       remarks: '',
       created_by: 'Admin',
-      shortage: formData.shortage,
+      shortage: formData.shortage ? parseFloat(formData.shortage) : 0,
       narration_sno: formData.narrationSno,
       narration_pg: formData.narrationPg,
       narration_date: formData.narrationDate,
@@ -386,63 +353,59 @@ export default function ReceiptPage() {
 
     try {
       if (isEditMode) {
-        alert('Editing existing receipts on API is not implemented yet.');
-        return;
+        await receiptsApi.update(id, payload);
       } else {
         await receiptsApi.create(payload);
-        
-        // Update bill amounts in DB
-        for (const [billId, allocatedAmount] of Object.entries(allocatedBills)) {
-          if (allocatedAmount > 0) {
-            await billsApi.pay(billId, allocatedAmount);
-          }
-        }
       }
+
+      setLastSavedReceipt(formData);
+
+      Swal.fire({
+        title: 'Success',
+        text: isEditMode ? 'Receipt updated successfully!' : 'Receipt saved successfully! Do you want to print it?',
+        icon: 'success',
+        showCancelButton: !isEditMode,
+        confirmButtonText: isEditMode ? 'OK' : 'Yes, Print',
+        cancelButtonText: 'No'
+      }).then((result) => {
+        if (!isEditMode && result.isConfirmed) {
+          setTimeout(handlePrint, 500); 
+        }
+        if (isEditMode) {
+          navigate('/reports/all-receipts');
+        } else {
+          // Reset Form
+          const maxVoucher = allReceipts.reduce((max, r) => {
+            const num = parseInt(r.receipt_no, 10);
+            return (!isNaN(num) && num > max) ? num : max;
+          }, 0);
+          const nextVoucher = (Math.max(maxVoucher, parseInt(formData.voucherNo)) + 1).toString().padStart(3, '0');
+          setFormData({
+            voucherNo: nextVoucher,
+            date: new Date().toISOString().split('T')[0],
+            accountName: 'CASH',
+            customerName: '',
+            billNo: '',
+            amount: '',
+            shortage: '',
+            narrationSno: '',
+            narrationPg: '',
+            narrationDate: ''
+          });
+          setAllocatedBills({});
+          setTimeout(() => {
+            if (clientInputRef.current) {
+              clientInputRef.current.focus();
+            }
+          }, 50);
+        }
+      });
     } catch (e) {
       console.error(e);
-      Swal.fire('Error', 'Failed to save receipt to database', 'error');
+      Swal.fire('Error', 'Failed to save receipt: ' + (e.message || 'Unknown error'), 'error');
       return;
     }
 
-    setLastSavedReceipt(formData);
-
-    Swal.fire({
-      title: 'Success',
-      text: isEditMode ? 'Receipt updated successfully!' : 'Receipt saved successfully! Do you want to print it?',
-      icon: 'success',
-      showCancelButton: !isEditMode,
-      confirmButtonText: isEditMode ? 'OK' : 'Yes, Print',
-      cancelButtonText: 'No'
-    }).then((result) => {
-      if (!isEditMode && result.isConfirmed) {
-        setTimeout(handlePrint, 500); 
-      }
-      
-      if (isEditMode) {
-        navigate('/reports/all-receipts');
-      } else {
-        // Reset Form
-        const nextVoucher = (parseInt(formData.voucherNo) + 1).toString().padStart(3, '0');
-        setFormData({
-          voucherNo: nextVoucher,
-          date: new Date().toISOString().split('T')[0],
-          accountName: 'CASH',
-          customerName: '',
-          billNo: '',
-          amount: '',
-          shortage: '',
-          narrationSno: '',
-          narrationPg: '',
-          narrationDate: ''
-        });
-        setAllocatedBills({});
-        setTimeout(() => {
-          if (clientInputRef.current) {
-            clientInputRef.current.focus();
-          }
-        }, 50);
-      }
-    });
   };
 
   return (
@@ -525,34 +488,7 @@ export default function ReceiptPage() {
               )}
             </div>
 
-            {/* Bill No */}
-            <div className="flex flex-col gap-1.5 relative md:col-span-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Bill No</label>
-              <input 
-                type="text"
-                ref={billInputRef}
-                value={formData.billNo}
-                onChange={handleBillChange}
-                onKeyDown={handleBillKeyDown}
-                onFocus={() => { if(filteredBillsList.length > 0) setShowBillDropdown(true); }}
-                onBlur={() => setTimeout(() => setShowBillDropdown(false), 200)}
-                placeholder="Search Bill No..."
-                className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#1E1E2D] text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
-              />
-              {showBillDropdown && filteredBillsList.length > 0 && (
-                <ul className="absolute z-10 w-full top-full mt-1 bg-white dark:bg-[#1E1E2D] border border-slate-200 dark:border-slate-600 rounded-md shadow-lg max-h-48 overflow-auto">
-                  {filteredBillsList.map((bill, idx) => (
-                    <li 
-                      key={idx} 
-                      onClick={() => selectBill(bill)}
-                      className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm text-slate-700 dark:text-slate-200"
-                    >
-                      {bill.billInfo?.billNo} {bill.customer?.name && `- ${bill.customer.name}`} (₹{bill.totals?.amount || 0})
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+
 
             {/* Amount */}
             <div className="flex flex-col gap-1.5">

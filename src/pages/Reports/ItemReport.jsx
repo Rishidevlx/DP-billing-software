@@ -5,7 +5,12 @@ import { booksApi, billsApi, returnsApi, stocksApi, clientsApi } from '../../ser
 
 const parseDate = (dStr) => {
   if (!dStr) return '';
-  if (dStr.includes('-') && dStr.split('-')[0].length === 4) return dStr;
+  // If it's a full ISO string (e.g. 2026-08-27T10:00:00Z), extract just the date part
+  if (typeof dStr === 'string' && dStr.includes('T')) {
+    dStr = dStr.split('T')[0];
+  }
+  
+  if (dStr.includes('-') && dStr.split('-')[0].length === 4) return dStr.substring(0, 10);
   
   const parts = dStr.split(/[-/]/);
   if (parts.length === 3) {
@@ -13,7 +18,7 @@ const parseDate = (dStr) => {
       return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     }
   }
-  return dStr;
+  return dStr.substring(0, 10);
 };
 
 // Component for printing
@@ -121,7 +126,7 @@ export default function ItemReport() {
       stocksApi.getAll(),
       clientsApi.getAll()
     ]).then(([b, bls, ret, stk, cli]) => {
-      setBooksList(b.map(book => ({ itemName: book.book_name, itemCode: book.alias_name })));
+      setBooksList(b.map(book => ({ id: book.id, itemName: book.book_name, itemCode: book.alias_name })));
       setAllBills(bls);
       setAllReturns(ret);
       setAllStocks(stk);

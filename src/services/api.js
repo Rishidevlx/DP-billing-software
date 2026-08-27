@@ -1,5 +1,9 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+async function fetchNoCache(url, options = {}) {
+  return fetch(url, { ...options, cache: 'no-store' });
+}
+
 // --- Helper Functions ---
 async function handleResponse(response) {
   const data = await response.json();
@@ -11,7 +15,7 @@ async function handleResponse(response) {
 
 // --- Books API ---
 export const booksApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/books`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/books`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/books`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -27,7 +31,7 @@ export const booksApi = {
 
 // --- Clients API ---
 export const clientsApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/clients`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/clients`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/clients`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -43,8 +47,8 @@ export const clientsApi = {
 
 // --- Bills API ---
 export const billsApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/bills`)),
-  getById: async (id) => handleResponse(await fetch(`${API_URL}/bills/${id}`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/bills`)),
+  getById: async (id) => handleResponse(await fetchNoCache(`${API_URL}/bills/${id}`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/bills`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -70,7 +74,7 @@ export const billsApi = {
 
 // --- Returns API ---
 export const returnsApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/returns`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/returns`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/returns`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -81,9 +85,14 @@ export const returnsApi = {
 
 // --- Receipts API ---
 export const receiptsApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/receipts`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/receipts`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/receipts`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })),
+  update: async (id, data) => handleResponse(await fetch(`${API_URL}/receipts/${id}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   })),
@@ -92,7 +101,7 @@ export const receiptsApi = {
 
 // --- Stocks API ---
 export const stocksApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/stock_entries`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/stock_entries`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/stock_entries`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -113,7 +122,7 @@ export const transportsApi = {
 
 // --- Banks API ---
 export const banksApi = {
-  getAll: async () => handleResponse(await fetch(`${API_URL}/banks`)),
+  getAll: async () => handleResponse(await fetchNoCache(`${API_URL}/banks`)),
   create: async (data) => handleResponse(await fetch(`${API_URL}/banks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

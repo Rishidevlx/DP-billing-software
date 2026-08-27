@@ -56,7 +56,7 @@ export default function AllReturns() {
   const handleDelete = (id) => {
     Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this! Stock will NOT be reversed.",
+      text: "You won't be able to revert this! The returned stock will be deducted back.",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -65,9 +65,12 @@ export default function AllReturns() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          alert('Delete API for Returns not implemented yet');
+          await returnsApi.delete(id);
+          loadReturns();
+          Swal.fire('Deleted!', 'Credit Note has been deleted.', 'success');
         } catch(e) {
           console.error(e);
+          Swal.fire('Error', 'Failed to delete return: ' + e.message, 'error');
         }
       }
     });
