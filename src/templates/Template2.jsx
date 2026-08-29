@@ -114,7 +114,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
                <div className="font-semibold uppercase text-slate-700 text-[13px]">
                  <p className="whitespace-pre-line">{customer?.address1?.trim()}</p>
                  {(customer?.town || customer?.address2) && (
-                   <p>{[customer?.town, customer?.address2].filter(Boolean).join(" - ")}</p>
+                   <p>{customer?.town ? `${customer.town} (Taluk)${customer?.address2 ? ` - ${customer.address2}` : ''}` : customer?.address2}</p>
                  )}
                  {customer?.district && <p>{customer?.district}</p>}
                  <p>Tamil Nadu (Code : 33)</p>
@@ -328,7 +328,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
               <p className="font-semibold text-slate-700 whitespace-pre-line">{customer?.address1?.trim() || ""}</p>
               {(customer?.town || customer?.address2) && (
                 <p className="font-semibold text-slate-700">
-                  {[customer?.town, customer?.address2].filter(Boolean).join(" - ")}
+                  {customer?.town ? `${customer.town} (Taluk)${customer?.address2 ? ` - ${customer.address2}` : ''}` : customer?.address2}
                 </p>
               )}
               {customer?.district && <p className="font-semibold text-slate-700">{customer?.district}</p>}
