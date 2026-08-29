@@ -420,16 +420,27 @@ export default function CreateBill() {
         });
         setItems([{ id: Date.now(), itemCode: '', hsnCode: '', itemName: '', rate: '', qty: '', teachersCopy: '0', amount: '' }]);
         
-        // Save current settings as default for the next bills
+        // Save only non-financial settings as default for next bills (not discount/freight)
         localStorage.setItem('defaultBillSettings', JSON.stringify({
-          ...billSettings,
-          cash: '' // reset cash as it's specific to each bill
+          itemDiscount: '',
+          cash: '',
+          discountPercent: '',
+          discountAmount: '',
+          freight: '',
+          roundOff: '',
+          inclTax: billSettings.inclTax,
+          sendWhatsapp: billSettings.sendWhatsapp,
+          priceType: billSettings.priceType
         }));
         
-        // Retain settings on UI but clear cash
+        // Retain only non-financial settings on UI, clear cash/discount/freight
         setBillSettings(prev => ({
           ...prev,
-          cash: ''
+          cash: '',
+          discountPercent: '',
+          discountAmount: '',
+          freight: '',
+          roundOff: ''
         }));
       }
     });
