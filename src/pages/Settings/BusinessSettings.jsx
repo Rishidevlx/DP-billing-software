@@ -20,6 +20,7 @@ export default function BusinessSettings() {
   const [invoiceTemplate, setInvoiceTemplate] = useState('classic');
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewTemplateId, setPreviewTemplateId] = useState(null);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
 
   const dummyBillData = {
     customer: { name: 'Demo Customer', school: 'Demo School', address1: '123 Demo St', address2: 'Demo Area', district: 'Demo District', gstin: '33DEMOGSTIN', phone: '1234567890', mobile: '9876543210' },
@@ -47,6 +48,12 @@ export default function BusinessSettings() {
       
       const tplSet = sData.find(s => s.setting_key === 'invoiceTemplate');
       if (tplSet) setInvoiceTemplate(tplSet.setting_value);
+      
+      const geminiSet = sData.find(s => s.setting_key === 'geminiApiKey');
+      if (geminiSet) {
+        setGeminiApiKey(geminiSet.setting_value);
+        localStorage.setItem('geminiApiKey', geminiSet.setting_value);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -158,6 +165,17 @@ export default function BusinessSettings() {
       Swal.fire({ title: 'Success', text: 'Invoice template updated successfully!', icon: 'success', timer: 1500, showConfirmButton: false });
     } catch (err) {
       Swal.fire('Error', 'Failed to update template', 'error');
+    }
+  };
+
+  const handleSaveGeminiApiKey = async (e) => {
+    e.preventDefault();
+    try {
+      await settingsApi.save('geminiApiKey', geminiApiKey);
+      localStorage.setItem('geminiApiKey', geminiApiKey);
+      Swal.fire({ title: 'Success', text: 'Gemini API Key saved successfully!', icon: 'success', timer: 1500, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire('Error', 'Failed to save API Key', 'error');
     }
   };
 
@@ -348,6 +366,27 @@ export default function BusinessSettings() {
                 <p className="text-xs text-slate-500">This will be displayed above 'Authorized Signatory' on the invoice.</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* GEMINI API KEY SECTION */}
+        <div className="bg-white dark:bg-[#151521] border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm overflow-hidden flex flex-col lg:col-span-2">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-[#1a1a2e]">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <PenTool className="text-blue-500" size={20} />
+              Gemini API Key (For Translation)
+            </h2>
+          </div>
+          <div className="p-6">
+            <form onSubmit={handleSaveGeminiApiKey} className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Enter Gemini API Key</label>
+                <input type="password" value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-[#151521] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500" placeholder="AIzaSy..." />
+              </div>
+              <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center gap-2 font-medium transition-colors">
+                Save
+              </button>
+            </form>
           </div>
         </div>
       </div>

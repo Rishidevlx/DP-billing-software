@@ -98,29 +98,14 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
               </div>
               
               <div className="w-[72%] flex flex-col items-center text-center pl-4 justify-center py-1">
-                {isLocalTransport ? (
-                  <>
-                    <h2 className="text-[26px] font-black text-[#1e3a8a] mb-1 tracking-wider uppercase">
-                      டால்பின் பப்ளிகேஷன்ஸ்
-                    </h2>
-                    <p className="font-bold text-gray-800 text-[14px] leading-tight">239, கீழப்பட்டி தெரு, ஸ்ரீவில்லிபுத்தூர் - 626 125. விருதுநகர் மாவட்டம்</p>
-                    <p className="font-bold text-gray-800 text-[14px] leading-tight">தமிழ்நாடு (Code : 33) &nbsp;|&nbsp; GSTIN : 33CAEPK4827P1ZC</p>
-                    <div className="w-full h-px bg-slate-300 my-1.5"></div>
-                    <p className="font-bold text-gray-900 text-[14.5px]">அலைபேசி : 98653-06197, 89256-77710</p>
-                    <p className="font-bold text-[#1e3a8a] text-[13.5px] mt-0.5">E-Mail : dolphin.pub2005@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; Website : www.kalvidolphin.com</p>
-                  </>
-                ) : (
-                  <>
-                    <h2 className="text-[26px] font-black text-[#1e3a8a] mb-1 tracking-wider uppercase">
-                      DOLPHIN PUBLICATIONS
-                    </h2>
-                    <p className="font-bold text-gray-800 text-[14px] leading-tight">239, Keelapatti Street, Srivilliputtur - 626 125. Virudhunagar District</p>
-                    <p className="font-bold text-gray-800 text-[14px] leading-tight">Tamil Nadu (Code : 33) &nbsp;|&nbsp; GSTIN : 33CAEPK4827P1ZC</p>
-                    <div className="w-full h-px bg-slate-300 my-1.5"></div>
-                    <p className="font-bold text-gray-900 text-[14.5px]">Mobile : 98653-06197, 89256-77710</p>
-                    <p className="font-bold text-[#1e3a8a] text-[13.5px] mt-0.5">E-Mail : dolphin.pub2005@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; Website : www.kalvidolphin.com</p>
-                  </>
-                )}
+                <h2 className="text-[26px] font-black text-[#1e3a8a] mb-1 tracking-wider uppercase">
+                  DOLPHIN PUBLICATIONS
+                </h2>
+                <p className="font-bold text-gray-800 text-[14px] leading-tight">239, Keelapatti Street, Srivilliputtur - 626 125. Virudhunagar District</p>
+                <p className="font-bold text-gray-800 text-[14px] leading-tight">Tamil Nadu (Code : 33) &nbsp;|&nbsp; GSTIN : 33CAEPK4827P1ZC</p>
+                <div className="w-full h-px bg-slate-300 my-1.5"></div>
+                <p className="font-bold text-gray-900 text-[14.5px]">Mobile : 98653-06197, 89256-77710</p>
+                <p className="font-bold text-[#1e3a8a] text-[13.5px] mt-0.5">E-Mail : dolphin.pub2005@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; Website : www.kalvidolphin.com</p>
               </div>
             </div>
 
@@ -232,32 +217,40 @@ export default function BillReport() {
     "taluk": "தாலுகா"
   };
 
-  // Function to transliterate text to Tamil using Google Input Tools API
   const translateToTamil = async (text) => {
     if (!text) return '';
-    const words = text.split(' ');
-    const translatedWords = await Promise.all(words.map(async (word) => {
-      // Don't translate words that contain digits (like 2/86, 12A)
-      if (/\d/.test(word)) return word;
-      
-      // Check dictionary for common words
-      const lowerWord = word.toLowerCase().replace(/[^a-z]/g, '');
-      if (tamilDictionary[lowerWord]) {
-        return tamilDictionary[lowerWord];
-      }
-      
+    
+    // First try Gemini API if key exists
+    const geminiKey = localStorage.getItem('geminiApiKey');
+    if (geminiKey) {
       try {
-        const response = await fetch(`https://inputtools.google.com/request?text=${word}&itc=ta-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`);
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `Translate the following English text to Tamil. Output ONLY the translated Tamil text. Do not add any explanation or quotes. Text: ${text}` }] }]
+          })
+        });
         const data = await response.json();
-        if (data[0] === 'SUCCESS' && data[1][0][1][0]) {
-          return data[1][0][1][0]; // First suggested Tamil transliteration
+        if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+          return data.candidates[0].content.parts[0].text.trim();
         }
       } catch (err) {
-        console.error("Translation error:", err);
+        console.error("Gemini translation error:", err);
       }
-      return word; // Fallback to original word
-    }));
-    return translatedWords.join(' ');
+    }
+
+    // Fallback to Google Translate API
+    try {
+      const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ta&dt=t&q=${encodeURIComponent(text)}`);
+      const data = await response.json();
+      if (data && data[0]) {
+        return data[0].map(item => item[0]).join('');
+      }
+    } catch (err) {
+      console.error("Translation error:", err);
+    }
+    return text; // Fallback to original word
   };
 
   const handleLocalTransportToggle = async (e) => {
