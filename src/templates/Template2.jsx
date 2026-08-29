@@ -112,7 +112,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
                </div>
                <p className="font-extrabold text-[16px] uppercase tracking-wide">{customer?.printName || customer?.school || customer?.name || ""}</p>
                <div className="font-semibold uppercase text-slate-700 text-[13px]">
-                 <p className="whitespace-pre-line">{customer?.address1}</p>
+                 <p className="whitespace-pre-line">{customer?.address1?.trim()}</p>
                  {(customer?.town || customer?.address2) && (
                    <p>{[customer?.town, customer?.address2].filter(Boolean).join(" - ")}</p>
                  )}
@@ -325,7 +325,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
             </div>
             <div className="text-slate-900 uppercase leading-snug text-[14px]">
               <p className="font-extrabold tracking-wide">{customer?.printName || customer?.school || customer?.name || ""}</p>
-              <p className="font-semibold text-slate-700 whitespace-pre-line">{customer?.address1 || ""}</p>
+              <p className="font-semibold text-slate-700 whitespace-pre-line">{customer?.address1?.trim() || ""}</p>
               {(customer?.town || customer?.address2) && (
                 <p className="font-semibold text-slate-700">
                   {[customer?.town, customer?.address2].filter(Boolean).join(" - ")}

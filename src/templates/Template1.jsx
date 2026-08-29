@@ -159,7 +159,7 @@ const Template1 = forwardRef(({ data, type = 'bill' }, ref) => {
                </div>
                <div className="p-2 text-[12px] leading-tight flex-1 flex flex-col font-medium uppercase">
                  {customer?.school && <p className="font-bold mb-0.5">{customer?.school}</p>}
-                 <p className="whitespace-pre-line">{customer?.address1}</p>
+                 <p className="whitespace-pre-line">{customer?.address1?.trim()}</p>
                  {customer?.address2 && <p>{customer?.address2}</p>}
                  <p>{customer?.city}</p>
                  {customer?.district && <p>{customer?.district}</p>}
@@ -354,7 +354,7 @@ const Template1 = forwardRef(({ data, type = 'bill' }, ref) => {
                         <span>Mob. No : {customer?.mobile || customer?.phone}</span>
                      </div>
                      {customer?.school && <p className="font-bold">{customer?.school}</p>}
-                     <p className="whitespace-pre-line">{customer?.address1}</p>
+                     <p className="whitespace-pre-line">{customer?.address1?.trim()}</p>
                      {customer?.address2 && <p>{customer?.address2}</p>}
                      <p>{customer?.city}</p>
                      {customer?.district && <p>{customer?.district}</p>}

@@ -6,7 +6,7 @@ import PrintInvoice from './PrintInvoice';
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js';
 import { generateEInvoice } from '../../utils/einvoiceApi';
-import { billsApi, clientsApi, booksApi } from '../../services/api';
+import { billsApi, clientsApi, booksApi, transportsApi } from '../../services/api';
 
 export default function CreateBill() {
   const { id } = useParams();
@@ -23,10 +23,11 @@ export default function CreateBill() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [clientsData, booksData, bills] = await Promise.all([
+        const [clientsData, booksData, billsData, transportsData] = await Promise.all([
           clientsApi.getAll(),
           booksApi.getAll(),
-          billsApi.getAll()
+          billsApi.getAll(),
+          transportsApi.getAll()
         ]);
         
         const mappedClients = clientsData.map(c => ({
@@ -60,9 +61,8 @@ export default function CreateBill() {
         }));
         setBooksList(mappedBooks);
 
-        // Load Transports
-        const savedTransports = JSON.parse(localStorage.getItem('transports') || '[]');
-        setTransportsList(savedTransports);
+        // Load Transports from DB
+        setTransportsList(transportsData || []);
 
         if (id) {
           // Edit mode

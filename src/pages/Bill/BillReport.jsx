@@ -76,7 +76,7 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
                       {isLocalTransport ? (labelData.tamilSchool || printName) : printName}
                     </p>
                   )}
-                  {toAddress1 && <p className="text-[20px] text-gray-700 mt-1 whitespace-pre-line">{isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1}</p>}
+                  {toAddress1 && <p className="text-[20px] text-gray-700 mt-1 whitespace-pre-line">{(isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1)?.trim()}</p>}
                   {toTown && <p className="text-[20px] text-gray-700">{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
                   {toDistrict && <p className="text-[20px] text-gray-700">{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
                   
