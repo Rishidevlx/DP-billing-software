@@ -464,19 +464,6 @@ export default function CreateReturn() {
               </div>
             )}
 
-            <div className="mt-2 flex flex-col gap-1">
-              <label className="text-xs font-semibold text-slate-500">Apply Price Type</label>
-              <select 
-                value={returnInfo.priceType || 'mrp'}
-                onChange={(e) => setReturnInfo(prev => ({ ...prev, priceType: e.target.value }))}
-                className="w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-[#1E1E2D] text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
-              >
-                <option value="mrp">MRP</option>
-                <option value="agent">Agent Price</option>
-                <option value="school">School Price</option>
-                <option value="customer">Customer Price</option>
-              </select>
-            </div>
           </div>
         </div>
 
