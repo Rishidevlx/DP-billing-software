@@ -66,7 +66,7 @@ export default function CreateBill() {
 
         if (id) {
           // Edit mode
-          const billToEdit = bills.find(b => b.id.toString() === id);
+          const billToEdit = billsData.find(b => b.id.toString() === id);
           if (billToEdit) {
             setIsEditMode(true);
             setBillInfo({
@@ -116,15 +116,8 @@ export default function CreateBill() {
           }
         } else {
           // Create mode
-          const billNos = bills.map(b => parseInt(b.bill_no) || 0).sort((a, b) => a - b);
-          let nextNoInt = 1;
-          for (let i = 0; i < billNos.length; i++) {
-            if (billNos[i] === nextNoInt) {
-              nextNoInt++;
-            } else if (billNos[i] > nextNoInt) {
-              break;
-            }
-          }
+          const billNos = billsData.map(b => parseInt(b.bill_no) || 0);
+          const nextNoInt = billNos.length > 0 ? Math.max(...billNos) + 1 : 1;
           const nextNo = String(nextNoInt).padStart(3, '0');
           setBillInfo(prev => ({ ...prev, billNo: nextNo }));
         }
@@ -256,15 +249,8 @@ export default function CreateBill() {
       if (result.isConfirmed) {
         const savedBills = localStorage.getItem('bills');
         const parsed = savedBills ? JSON.parse(savedBills) : [];
-        const billNos = parsed.map(b => parseInt(b.billInfo?.billNo) || 0).sort((a, b) => a - b);
-        let nextNoInt = 1;
-        for (let i = 0; i < billNos.length; i++) {
-          if (billNos[i] === nextNoInt) {
-            nextNoInt++;
-          } else if (billNos[i] > nextNoInt) {
-            break;
-          }
-        }
+        const billNos = parsed.map(b => parseInt(b.billInfo?.billNo) || 0);
+        const nextNoInt = billNos.length > 0 ? Math.max(...billNos) + 1 : 1;
         const nextNo = String(nextNoInt).padStart(3, '0');
         
         setBillInfo({
@@ -423,15 +409,8 @@ export default function CreateBill() {
 
         // Prepare next bill No
         const allBills = await billsApi.getAll();
-        const billNos = allBills.map(b => parseInt(b.bill_no) || 0).sort((a, b) => a - b);
-        let nextNoInt = 1;
-        for (let i = 0; i < billNos.length; i++) {
-          if (billNos[i] === nextNoInt) {
-            nextNoInt++;
-          } else if (billNos[i] > nextNoInt) {
-            break;
-          }
-        }
+        const billNos = allBills.map(b => parseInt(b.bill_no) || 0);
+        const nextNoInt = billNos.length > 0 ? Math.max(...billNos) + 1 : 1;
         const nextNo = String(nextNoInt).padStart(3, '0');
         setBillInfo(prev => ({ ...prev, billNo: nextNo }));
         
