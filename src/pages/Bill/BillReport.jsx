@@ -38,7 +38,7 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
             </div>
 
             {/* Top Section */}
-            <div className="flex justify-between items-stretch flex-1 gap-6 mb-4 relative z-10">
+            <div className="flex justify-between items-stretch flex-1 gap-6 mb-4 relative z-10 min-h-0">
               
               {/* Left Side: Transport Details */}
               <div className="w-[48%] space-y-5 flex flex-col">
@@ -50,11 +50,11 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
                 <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-5 flex-1 flex flex-col justify-center space-y-5 shadow-sm">
                   <div className="flex items-end gap-3 border-b border-slate-200 pb-2">
                     <span className="w-36 text-slate-500 font-bold text-lg uppercase tracking-wider">Transport</span>
-                    <span className="handwritten-text flex-1 text-[26px] font-bold text-[#1e3a8a]">{transport}</span>
+                    <span className="handwritten-text flex-1 text-[26px] font-bold text-[#1e3a8a] truncate">{transport}</span>
                   </div>
                   <div className="flex items-end gap-3 border-b border-slate-200 pb-2">
                     <span className="w-36 text-slate-500 font-bold text-lg uppercase tracking-wider">Destination</span>
-                    <span className="handwritten-text flex-1 text-[26px] font-bold text-[#1e3a8a]">{destination}</span>
+                    <span className="handwritten-text flex-1 text-[26px] font-bold text-[#1e3a8a] truncate">{destination}</span>
                   </div>
                   <div className="flex items-end gap-3">
                     <span className="w-36 text-slate-500 font-bold text-lg uppercase tracking-wider">Bundles</span>
@@ -64,23 +64,23 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
               </div>
 
               {/* Right Side: TO Address */}
-              <div className="w-[52%] bg-blue-50/50 border border-blue-200 rounded-xl p-5 pl-6 relative shadow-sm flex flex-col">
-                <div className="flex justify-start mb-1">
+              <div className="w-[52%] bg-blue-50/50 border border-blue-200 rounded-xl p-5 pl-6 relative shadow-sm flex flex-col min-h-0">
+                <div className="flex justify-start mb-1 shrink-0">
                   <div className="bg-[#1e3a8a] text-white px-4 py-1 rounded-md font-bold tracking-widest uppercase text-sm shadow-sm">
                     DELIVERY ADDRESS
                   </div>
                 </div>
-                <div className="space-y-1.5 text-gray-800 font-bold text-xl leading-snug pt-3 flex-1 flex flex-col">
+                <div className="space-y-1.5 text-gray-800 font-bold text-xl leading-snug pt-3 flex-1 flex flex-col min-h-0 overflow-hidden">
                   {printName && (
-                    <p className="text-[28px] font-black text-[#1e3a8a] mb-2 uppercase tracking-wider leading-tight">
+                    <p className="text-[28px] font-black text-[#1e3a8a] mb-2 uppercase tracking-wider leading-tight line-clamp-2 shrink-0">
                       {isLocalTransport ? (labelData.tamilSchool || printName) : printName}
                     </p>
                   )}
-                  {toAddress1 && <p className="text-[20px] text-gray-700 mt-1 whitespace-pre-line">{(isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1)?.trim()}</p>}
-                  {toTown && <p className="text-[20px] text-gray-700">{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
-                  {toDistrict && <p className="text-[20px] text-gray-700">{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
+                  {toAddress1 && <p className="text-[19px] text-gray-700 mt-1 whitespace-pre-line line-clamp-3 shrink-0">{(isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1)?.trim()}</p>}
+                  {toTown && <p className="text-[19px] text-gray-700 truncate shrink-0">{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
+                  {toDistrict && <p className="text-[19px] text-gray-700 truncate shrink-0">{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
                   
-                  <div className="mt-auto pt-3 flex gap-2 text-[22px] font-black border-t-2 border-blue-200 border-dashed">
+                  <div className="mt-auto pt-3 flex gap-2 text-[22px] font-black border-t-2 border-blue-200 border-dashed shrink-0">
                     <span className="text-[#1e3a8a]">{isLocalTransport ? 'செல் :' : 'Mobile :'}</span> 
                     <span>{toMobile}</span>
                   </div>
