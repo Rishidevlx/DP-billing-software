@@ -25,8 +25,9 @@ const PrintLedger = forwardRef(({ data, filters, selectedClient, isLetterFormat 
         <div className="mb-8">
           <p className="font-bold uppercase text-base">THE HEAD MISTRESS,</p>
           <p className="font-bold uppercase text-base">{selectedClient.ledgerName}</p>
-          {selectedClient.address && <p className="font-bold uppercase text-base">{selectedClient.address}</p>}
-          <p className="font-bold uppercase text-base">{selectedClient.city}</p>
+          {selectedClient.address1 && <p className="font-bold uppercase text-base">{selectedClient.address1}</p>}
+          {selectedClient.address2 && <p className="font-bold uppercase text-base">{selectedClient.address2}</p>}
+          {(selectedClient.town || selectedClient.city) && <p className="font-bold uppercase text-base">{selectedClient.town || selectedClient.city}</p>}
           {selectedClient.district && <p className="font-bold uppercase text-base">{selectedClient.district}</p>}
           <p className="font-bold mt-1 text-base">
             {selectedClient.phoneNo ? `Phone No : ${selectedClient.phoneNo}` : ''}
@@ -126,9 +127,10 @@ const PrintLedger = forwardRef(({ data, filters, selectedClient, isLetterFormat 
       <div className="text-center mb-6">
         <h2 className="font-bold uppercase text-lg">THE HEAD MISTRESS,</h2>
         <h2 className="font-bold uppercase text-lg">{selectedClient.ledgerName}</h2>
-        {selectedClient.address && <p className="font-semibold uppercase">{selectedClient.address}</p>}
-        {selectedClient.city && <p className="font-semibold uppercase">{selectedClient.city} {selectedClient.pincode ? `- ${selectedClient.pincode}` : ''}</p>}
-        <p className="font-semibold uppercase">Virudhunagar District</p>
+        {selectedClient.address1 && <p className="font-semibold uppercase">{selectedClient.address1}</p>}
+        {selectedClient.address2 && <p className="font-semibold uppercase">{selectedClient.address2}</p>}
+        {(selectedClient.town || selectedClient.city) && <p className="font-semibold uppercase">{selectedClient.town || selectedClient.city}</p>}
+        {selectedClient.district && <p className="font-semibold uppercase">{selectedClient.district}</p>}
         {selectedClient.mobileNo && <p className="font-semibold">Phone No : {selectedClient.mobileNo}</p>}
       </div>
 
