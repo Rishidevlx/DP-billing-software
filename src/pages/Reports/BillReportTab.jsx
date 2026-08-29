@@ -87,6 +87,7 @@ export default function BillReportTab() {
             school: customer?.school || '',
             mobile: customer?.mobile || '',
             address1: customer?.address1 || '',
+            address2: customer?.address2 || '',
             town: customer?.town || '',
             district: customer?.district || ''
           },

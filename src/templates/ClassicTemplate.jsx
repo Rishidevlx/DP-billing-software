@@ -109,7 +109,7 @@ const ClassicTemplate = forwardRef(({ data, type = 'bill' }, ref) => {
             </div>
             <div className="mt-2 text-slate-900 uppercase">
               <p>{customer?.school || ""}</p>
-              <p>{customer?.address1 || ""}</p>
+              <p className="whitespace-pre-line">{customer?.address1 || ""}</p>
               <p>{customer?.address2 || ""}</p>
               <p>{customer?.district || ""}</p>
               <p>Tamil Nadu (Code : 33)</p>
@@ -310,7 +310,7 @@ const ClassicTemplate = forwardRef(({ data, type = 'bill' }, ref) => {
               </div>
               <div className="text-slate-900 uppercase leading-snug">
                 <p>{customer?.school || ""}</p>
-                <p>{customer?.address1 || ""}</p>
+                <p className="whitespace-pre-line">{customer?.address1 || ""}</p>
                 <p>{customer?.address2 || ""}</p>
                 <p>{customer?.district || ""}</p>
                 <p>Tamil Nadu (Code : 33)</p>

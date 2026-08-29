@@ -46,7 +46,7 @@ const Template4 = forwardRef(({ data, type = 'bill' }, ref) => {
               <div className="mb-6">
                 <p className="font-bold tracking-widest uppercase mb-2">{isReturn ? "RETURN FROM:" : "ISSUED TO:"}</p>
                 <p className="font-bold text-sm uppercase">{customer?.name || customer?.school || 'Customer Name'}</p>
-                <p className="mt-1 uppercase">{customer?.address1}</p>
+                <p className="mt-1 uppercase whitespace-pre-line">{customer?.address1}</p>
                 {customer?.address2 && <p className="uppercase">{customer?.address2}</p>}
                 <p className="uppercase">{customer?.district || customer?.city}</p>
                 <p className="uppercase">{customer?.mobile || customer?.phone}</p>

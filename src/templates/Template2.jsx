@@ -112,9 +112,11 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
                </div>
                <p className="font-extrabold text-[16px] uppercase tracking-wide">{customer?.printName || customer?.school || customer?.name || ""}</p>
                <div className="font-semibold uppercase text-slate-700 text-[13px]">
-                 <p>{customer?.address1}</p>
-                 <p>{customer?.address2}</p>
-                 <p>{customer?.district}</p>
+                 <p className="whitespace-pre-line">{customer?.address1}</p>
+                 {(customer?.town || customer?.address2) && (
+                   <p>{[customer?.town, customer?.address2].filter(Boolean).join(" - ")}</p>
+                 )}
+                 {customer?.district && <p>{customer?.district}</p>}
                  <p>Tamil Nadu (Code : 33)</p>
                  {customer?.gstin && <p className="mt-1 font-bold text-[#0c2858]">GST NO : {customer.gstin}</p>}
                  {customer?.phone && <p>Phone No : {customer.phone}</p>}
@@ -321,11 +323,15 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
             <div className="flex mb-1">
               <span className="text-blue-700">{isReturn ? "RETURN FROM :" : "To :"}</span>
             </div>
-            <div className="text-slate-900 uppercase leading-snug">
+            <div className="text-slate-900 uppercase leading-snug text-[14px]">
               <p className="font-extrabold tracking-wide">{customer?.printName || customer?.school || customer?.name || ""}</p>
-              <p className="font-semibold text-slate-700">{customer?.address1 || ""}</p>
-              <p className="font-semibold text-slate-700">{customer?.address2 || ""}</p>
-              <p className="font-semibold text-slate-700">{customer?.district || ""}</p>
+              <p className="font-semibold text-slate-700 whitespace-pre-line">{customer?.address1 || ""}</p>
+              {(customer?.town || customer?.address2) && (
+                <p className="font-semibold text-slate-700">
+                  {[customer?.town, customer?.address2].filter(Boolean).join(" - ")}
+                </p>
+              )}
+              {customer?.district && <p className="font-semibold text-slate-700">{customer?.district}</p>}
               <p className="font-semibold text-slate-700">Tamil Nadu (Code : 33)</p>
               {customer?.gstin && <p className="mt-1">GST NO : {customer.gstin}</p>}
               {customer?.phone && <p>Phone No : {customer.phone}</p>}

@@ -52,7 +52,7 @@ const Template5 = forwardRef(({ data, type = 'bill' }, ref) => {
             <div className="col-span-1">
               <p className="font-bold text-blue-400 uppercase tracking-widest mb-3 text-[10px]">{isReturn ? "RETURN FROM" : "INVOICE TO"}</p>
               <p className="font-bold text-sm text-white mb-2 uppercase">{customer?.name || customer?.school || 'Customer Name'}</p>
-              <p className="text-slate-400 uppercase">{customer?.address1}</p>
+              <p className="text-slate-400 uppercase whitespace-pre-line">{customer?.address1}</p>
               {customer?.address2 && <p className="text-slate-400 uppercase">{customer?.address2}</p>}
               <p className="text-slate-400 uppercase">{customer?.district || customer?.city}</p>
               <p className="text-slate-400 mt-2 uppercase">{customer?.mobile || customer?.phone}</p>

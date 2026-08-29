@@ -58,6 +58,7 @@ export default function AllBills() {
             mobile: customer?.mobile || '',
             address1: customer?.address1 || '',
             address2: customer?.address2 || '',
+            town: customer?.town || '',
             district: customer?.district || '',
             party_type: customer?.party_type || 'School'
           },

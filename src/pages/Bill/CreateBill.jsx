@@ -35,7 +35,8 @@ export default function CreateBill() {
           mobile: c.mobile || '',
           school: c.school || '',
           address1: c.address1 || '',
-          address2: c.town || '',
+          address2: c.address2 || '',
+          town: c.town || '',
           district: c.district || '',
           phone: '',
           party_type: c.party_type || 'School'
@@ -156,6 +157,7 @@ export default function CreateBill() {
     school: '',
     address1: '',
     address2: '',
+    town: '',
     district: '',
     phone: '',
     mobile: ''
