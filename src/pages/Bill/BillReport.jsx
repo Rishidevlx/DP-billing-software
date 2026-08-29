@@ -25,13 +25,14 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
             @page { size: A4 portrait; margin: 0; }
             body { -webkit-print-color-adjust: exact; color-adjust: exact; margin: 0; }
             .handwritten-text { font-family: "Comic Sans MS", "Chalkboard SE", sans-serif; color: #1e3a8a; border-bottom: 1.5px dashed #64748b; display: inline-block; text-transform: uppercase; padding-bottom: 2px; }
+            .label-outer-border { border: 3px solid #1e3a8a !important; border-radius: 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           `}
         </style>
 
         {/* Content wrapper with padding to simulate margins, keeping strictly within 148mm height */}
-        <div className="p-2 h-full flex flex-col justify-between">
+        <div className="p-1.5 h-full flex flex-col justify-between">
           
-          <div className="border-[3px] border-[#1e3a8a] rounded-2xl h-full flex flex-col p-3 bg-white relative overflow-hidden">
+          <div className="label-outer-border border-[3px] border-[#1e3a8a] rounded-2xl h-full flex flex-col p-3 bg-white relative overflow-hidden" style={{ border: '3px solid #1e3a8a', borderRadius: '16px' }}>
             {/* Watermark Logo */}
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none">
               <img src="/DP-logo.png" alt="" className="w-[350px]" />
@@ -70,17 +71,17 @@ const PrintLabel = React.forwardRef(({ bill, labelData }, ref) => {
                     DELIVERY ADDRESS
                   </div>
                 </div>
-                <div className="space-y-1.5 text-gray-800 font-bold text-xl leading-snug pt-3 flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="space-y-1 text-gray-800 font-bold text-xl leading-snug pt-3 flex-1 flex flex-col min-h-0 overflow-hidden">
                   {printName && (
-                    <p className="text-[28px] font-black text-[#1e3a8a] mb-2 uppercase tracking-wider leading-tight line-clamp-2 shrink-0">
+                    <p className="text-[24px] font-black text-[#1e3a8a] mb-2 uppercase tracking-wider leading-tight line-clamp-2 shrink-0">
                       {isLocalTransport ? (labelData.tamilSchool || printName) : printName}
                     </p>
                   )}
-                  {toAddress1 && <p className="text-[19px] text-gray-700 mt-1 whitespace-pre-line line-clamp-3 shrink-0">{(isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1)?.trim()}</p>}
-                  {toTown && <p className="text-[19px] text-gray-700 truncate shrink-0">{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
-                  {toDistrict && <p className="text-[19px] text-gray-700 truncate shrink-0">{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
+                  {toAddress1 && <p className="text-[17px] text-gray-700 mt-1 whitespace-pre-line line-clamp-3 shrink-0">{(isLocalTransport ? (labelData.tamilAddress1 || toAddress1) : toAddress1)?.trim()}</p>}
+                  {toTown && <p className="text-[17px] text-gray-700 truncate shrink-0">{isLocalTransport ? (labelData.tamilTown || toTown) : toTown}</p>}
+                  {toDistrict && <p className="text-[17px] text-gray-700 truncate shrink-0">{isLocalTransport ? (labelData.tamilDistrict || toDistrict) : toDistrict} {isLocalTransport ? 'மாவட்டம்' : 'District'}</p>}
                   
-                  <div className="mt-auto pt-3 flex gap-2 text-[22px] font-black border-t-2 border-blue-200 border-dashed shrink-0">
+                  <div className="mt-auto pt-2 flex gap-2 text-[19px] font-black border-t-2 border-blue-200 border-dashed shrink-0">
                     <span className="text-[#1e3a8a]">{isLocalTransport ? 'செல் :' : 'Mobile :'}</span> 
                     <span>{toMobile}</span>
                   </div>
