@@ -205,10 +205,10 @@ export default function PaymentPendingReport() {
       const clientInfo = clients.find(c => (c.ledgerName || '').toLowerCase() === custName.toLowerCase() || (c.printName || '').toLowerCase() === custName.toLowerCase());
       
       const district = clientInfo?.district ? clientInfo.district.toUpperCase() : 'OTHER DISTRICTS';
-      const city = clientInfo?.city ? clientInfo.city.toUpperCase() : 'OTHER CITIES';
+      const city = clientInfo?.city ? clientInfo.city.toUpperCase() : '';
       
       distSet.add(district);
-      citySet.add(city);
+      if (city) citySet.add(city);
       
       // Apply Dropdown Filters
       if (selectedDistrict !== 'All' && district !== selectedDistrict) return;
@@ -216,8 +216,10 @@ export default function PaymentPendingReport() {
       
       const mobile = clientInfo?.mobileNo || '';
       const printName = clientInfo?.printName || clientInfo?.ledgerName || custName;
-      // Formatting customer display name as seen in image: Mobile, Name, City,, Mobile
-      const displayName = `${mobile ? mobile + ', ' : ''}${printName.toUpperCase()}, ${city}${mobile ? ', ' + mobile : ''}`;
+      
+      // Formatting customer display name
+      const cityStr = city ? `, ${city}` : '';
+      const displayName = `${mobile ? mobile + ', ' : ''}${printName.toUpperCase()}${cityStr}${mobile ? ', ' + mobile : ''}`;
 
       // Sort bills by date
       billsList.sort((a, b) => (a.billDateRaw > b.billDateRaw ? 1 : -1));
