@@ -36,7 +36,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
   };
 
   return (
-    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', height: '375mm', minHeight: '375mm', maxHeight: '375mm', padding: '8mm', boxSizing: 'border-box' }}>
+    <div ref={ref} className="bg-white text-black font-sans mx-auto" style={{ width: '215.9mm', height: '395mm', minHeight: '395mm', maxHeight: '395mm', padding: '8mm', boxSizing: 'border-box' }}>
       <style>{`
         @media print {
           @page { margin: 0; }
@@ -46,7 +46,7 @@ const Template2 = forwardRef(({ data, type = 'bill' }, ref) => {
       `}</style>
 
       {/* Main Container */}
-      <div className="flex flex-col relative" style={{ height: '315mm', minHeight: '315mm', maxHeight: '315mm', pageBreakInside: 'avoid' }}>
+      <div className="flex flex-col relative" style={{ height: '335mm', minHeight: '335mm', maxHeight: '335mm', pageBreakInside: 'avoid' }}>
         
         {/* Header */}
         <div className="relative flex justify-center items-center mb-1 min-h-[140px]">

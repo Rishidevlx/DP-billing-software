@@ -300,28 +300,7 @@ export default function LRDetails() {
                 </div>
               </div>
 
-              {/* Billed Books List */}
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                <div className="font-bold text-xs text-slate-500 uppercase mb-2">Billed Books</div>
-                <div className="max-h-40 overflow-y-auto rounded border border-slate-200 dark:border-slate-700 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
-                  <table className="w-full text-xs text-left text-slate-600 dark:text-slate-400 border-collapse">
-                    <thead className="bg-slate-100 dark:bg-[#1a1a2e] text-slate-700 dark:text-slate-300 sticky top-0 shadow-sm z-10">
-                      <tr>
-                        <th className="p-1.5 font-semibold">Book Name</th>
-                        <th className="p-1.5 font-semibold text-center w-12">Qty</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedBill.items?.map((item, idx) => (
-                        <tr key={idx} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0">
-                          <td className="p-1.5 font-medium">{item.itemName}</td>
-                          <td className="p-1.5 text-center">{item.qty}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+
               
               <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-medium rounded transition-colors border-none cursor-pointer">
